@@ -1,0 +1,1702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DBVJ — Inventory & Job Cost Tracker</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;background:#F5F5F3;color:#1a1a1a;min-height:100vh}
+  .header{background:#1a1a1a;color:#fff;padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  .header h1{font-size:16px;font-weight:500;letter-spacing:.02em}
+  .header span{font-size:12px;opacity:.5}
+  .container{max-width:960px;margin:0 auto;padding:1.5rem}
+  .tabs{display:flex;gap:0;margin-bottom:1.5rem;background:#fff;border:0.5px solid #e0e0e0;border-radius:10px;overflow:hidden;flex-wrap:wrap}
+  .tab{flex:1;padding:10px 6px;border:none;background:none;font-size:12px;cursor:pointer;color:#666;font-family:inherit;transition:all .15s;min-width:80px}
+  .tab.active{background:#1a1a1a;color:#fff;font-weight:500}
+  .tab:hover:not(.active){background:#f5f5f3}
+  .panel{display:none}.panel.active{display:block}
+  .sec-label{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#888;margin-bottom:.6rem}
+  .card{background:#fff;border:0.5px solid #e0e0e0;border-radius:12px;padding:1rem 1.25rem;margin-bottom:12px}
+  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem}
+  .metric{background:#fff;border:0.5px solid #e0e0e0;border-radius:8px;padding:.75rem 1rem}
+  .metric-label{font-size:11px;color:#888;margin-bottom:3px}
+  .metric-value{font-size:18px;font-weight:500;color:#1a1a1a}
+  .metric-sub{font-size:11px;color:#aaa;margin-top:2px}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .form-field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+  .form-field label{font-size:11px;color:#888;font-weight:500}
+  select,input[type=text],input[type=number],input[type=date]{font-size:13px;padding:8px 10px;border:0.5px solid #d0d0d0;border-radius:8px;background:#fff;color:#1a1a1a;outline:none;font-family:inherit;width:100%}
+  select:focus,input:focus{border-color:#1a1a1a}
+  .btn{padding:8px 18px;border-radius:8px;border:0.5px solid #d0d0d0;background:#fff;font-size:13px;cursor:pointer;color:#1a1a1a;font-family:inherit;transition:all .15s}
+  .btn:hover{background:#f5f5f3}
+  .btn-primary{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+  .btn-primary:hover{background:#333}
+  .btn-print{background:#2563EB;color:#fff;border-color:#2563EB}
+  .btn-print:hover{background:#1d4ed8}
+  .btn-sm{padding:4px 10px;font-size:11px}
+  .btn-danger{border-color:#E24B4A;color:#A32D2D;background:#fff}
+  .btn-danger:hover{background:#FCEBEB}
+  .divider{border:none;border-top:0.5px solid #e8e8e8;margin:1.25rem 0}
+  .cost-breakdown{background:#F9F9F7;border-radius:8px;padding:.75rem 1rem;margin-top:10px}
+  .cost-row{display:flex;justify-content:space-between;font-size:12px;color:#666;margin-bottom:5px;transition:opacity .2s}
+  .cost-row.total{font-weight:600;font-size:13px;color:#1a1a1a;border-top:0.5px solid #e0e0e0;margin-top:8px;padding-top:8px;margin-bottom:0}
+  .cost-row.subtotal{font-weight:500;font-size:12px;color:#444;border-top:0.5px solid #eee;margin-top:6px;padding-top:6px}
+  .cost-row.dimmed{opacity:.3;text-decoration:line-through}
+  .cost-section-hdr{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#bbb;margin:10px 0 4px}
+  .alert{font-size:12px;padding:8px 12px;border-radius:8px;margin-top:10px}
+  .alert-warn{background:#FAEEDA;color:#633806}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{text-align:left;padding:7px 8px;border-bottom:0.5px solid #e0e0e0;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.04em}
+  td{padding:9px 8px;border-bottom:0.5px solid #f0f0f0;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:#fafaf8}
+  .badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:4px;font-weight:600}
+  .badge-ok{background:#EAF3DE;color:#27500A}
+  .badge-low{background:#FAEEDA;color:#633806}
+  .badge-out{background:#FCEBEB;color:#791F1F}
+  .stock-bar-wrap{width:60px;height:7px;background:#eee;border-radius:4px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:5px}
+  .stock-bar{height:100%;border-radius:4px;transition:width .3s}
+  .log-msg{font-size:12px;color:#3B6D11;margin-top:8px;font-weight:500}
+  .empty{font-size:13px;color:#aaa;padding:1.5rem 0;text-align:center}
+  .toggle-group{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+  .toggle-btn{display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:8px;border:0.5px solid #d0d0d0;background:#fff;font-size:12px;cursor:pointer;font-family:inherit;color:#666;transition:all .15s;user-select:none}
+  .toggle-btn.on{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+  .toggle-btn .dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
+
+  /* ── JOB CARD MODAL ── */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:1rem}
+  .modal-overlay.open{display:flex}
+  .edit-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1001;align-items:center;justify-content:center;padding:1rem}
+  .edit-overlay.open{display:flex}
+  .modal{background:#fff;border-radius:16px;width:100%;max-width:680px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .modal-header{padding:1.25rem 1.5rem;border-bottom:0.5px solid #e0e0e0;display:flex;align-items:center;justify-content:space-between}
+  .modal-header h2{font-size:15px;font-weight:600}
+  .modal-body{padding:1.5rem}
+  .modal-footer{padding:1rem 1.5rem;border-top:0.5px solid #e0e0e0;display:flex;gap:8px;justify-content:flex-end}
+
+  /* ── PRINT JOB CARD ── */
+  #printable-card{display:none}
+
+
+  /* ── WARRANTY CERTIFICATE — ink-efficient white ── */
+  .wc{font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;background:#fff;max-width:700px;margin:0 auto;padding:32px;page-break-before:always}
+  .wc-inner{border:2px solid #1a1a1a;border-radius:4px;padding:28px;position:relative}
+  .wc-corner{position:absolute;width:16px;height:16px;border-color:#8B6914;border-style:solid}
+  .wc-corner-tl{top:6px;left:6px;border-width:2px 0 0 2px}
+  .wc-corner-tr{top:6px;right:6px;border-width:2px 2px 0 0}
+  .wc-corner-bl{bottom:6px;left:6px;border-width:0 0 2px 2px}
+  .wc-corner-br{bottom:6px;right:6px;border-width:0 2px 2px 0}
+  .wc-logo{text-align:center;margin-bottom:6px}
+  .wc-logo h1{font-size:20px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#1a1a1a}
+  .wc-logo p{font-size:11px;letter-spacing:.08em;color:#8B6914;text-transform:uppercase;margin-top:2px}
+  .wc-title{text-align:center;margin:14px 0;padding:10px 0;border-top:1.5px solid #1a1a1a;border-bottom:1.5px solid #1a1a1a;background:#f7f3e8}
+  .wc-title h2{font-size:16px;letter-spacing:.12em;text-transform:uppercase;color:#1a1a1a;font-weight:700}
+  .wc-title p{font-size:11px;color:#8B6914;margin-top:3px;letter-spacing:.04em}
+  .wc-fields{margin:16px 0}
+  .wc-field{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #e0e0e0}
+  .wc-field:last-child{border-bottom:none;margin-bottom:0}
+  .wc-field-lbl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#666;width:130px;flex-shrink:0}
+  .wc-field-val{font-size:13px;color:#1a1a1a;font-family:Arial,sans-serif;flex:1;font-weight:500}
+  .wc-years{display:flex;gap:16px;margin:2px 0}
+  .wc-year-opt{display:flex;align-items:center;gap:5px;font-size:12px;color:#aaa;font-family:Arial,sans-serif}
+  .wc-year-opt.selected{color:#1a1a1a;font-weight:700}
+  .wc-year-box{width:13px;height:13px;border:1.5px solid #bbb;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0}
+  .wc-year-box.checked{border-color:#1a1a1a;background:#1a1a1a;color:#fff}
+  .wc-divider{border:none;border-top:1px solid #ddd;margin:14px 0}
+  .wc-two{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px}
+  .wc-section h3{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#1a1a1a;margin-bottom:8px;padding-bottom:4px;border-bottom:1.5px solid #1a1a1a}
+  .wc-item{display:flex;align-items:flex-start;gap:7px;font-size:11px;color:#333;margin-bottom:6px;line-height:1.4;font-family:Arial,sans-serif}
+  .wc-item-icon{flex-shrink:0;font-size:11px;margin-top:1px}
+  .wc-maintenance h3{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#1a1a1a;margin-bottom:8px;padding-bottom:4px;border-bottom:1.5px solid #1a1a1a}
+  .wc-maint-item{display:flex;align-items:flex-start;gap:7px;font-size:11px;color:#333;margin-bottom:5px;font-family:Arial,sans-serif}
+  .wc-claim{background:#f7f3e8;border:1px solid #ddd;border-radius:4px;padding:10px 14px;margin:12px 0;font-family:Arial,sans-serif}
+  .wc-claim h3{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#1a1a1a;margin-bottom:7px}
+  .wc-claim p{font-size:11px;color:#333;margin-bottom:3px}
+  .wc-sigs{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:20px}
+  .wc-sig-line{border-top:1px solid #1a1a1a;padding-top:5px;font-size:10px;color:#666;text-align:center;letter-spacing:.04em;margin-top:32px}
+  .wc-footer{text-align:center;margin-top:14px;font-size:10px;color:#888;letter-spacing:.04em;line-height:1.6;font-family:Arial,sans-serif;border-top:1px solid #e0e0e0;padding-top:10px}
+  @media print{
+    body>*{display:none!important}
+    #printable-card{display:block!important;padding:0;margin:0}
+    .no-print{display:none!important}
+    @page{size:A4 portrait;margin:8mm 10mm}
+    .jc{page-break-after:avoid;page-break-inside:avoid}
+  }
+
+  .jc{font-family:Arial,Helvetica,sans-serif;color:#111;width:100%;margin:0 auto;padding:14px 18px;font-size:11px}
+  .jc-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #111}
+  .jc-biz h1{font-size:16px;font-weight:700;margin-bottom:1px}
+  .jc-biz p{font-size:10px;color:#555;line-height:1.4}
+  .jc-title{text-align:right}
+  .jc-title h2{font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+  .jc-title p{font-size:10px;color:#777;margin-top:1px}
+  .jc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+  .jc-section{margin-bottom:8px}
+  .jc-section h3{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#777;border-bottom:1px solid #e0e0e0;padding-bottom:2px;margin-bottom:6px}
+  .jc-row{display:flex;justify-content:space-between;font-size:10.5px;margin-bottom:3px;align-items:baseline}
+  .jc-row .lbl{color:#555;flex-shrink:0;margin-right:8px}
+  .jc-row .val{font-weight:600;text-align:right}
+  .jc-coatings{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
+  .jc-pill{background:#f0f0f0;border-radius:3px;padding:2px 7px;font-size:10px;font-weight:600}
+  .jc-pill.on{background:#1a1a1a;color:#fff}
+  .jc-totals{background:#f9f9f7;border-radius:6px;padding:8px 12px;margin-bottom:8px}
+  .jc-totals .jc-row{margin-bottom:3px}
+  .jc-totals .jc-row.grand{font-size:12px;border-top:1px solid #ddd;margin-top:6px;padding-top:6px}
+  .jc-totals .jc-row.grand .val{color:#1a1a1a}
+  .jc-checklist{margin-bottom:8px}
+  .jc-checklist h3{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#777;border-bottom:1px solid #e0e0e0;padding-bottom:2px;margin-bottom:5px}
+  .jc-check-item{display:flex;align-items:center;gap:7px;font-size:10.5px;margin-bottom:4px}
+  .jc-check-box{width:12px;height:12px;border:1.5px solid #ccc;border-radius:2px;flex-shrink:0}
+  .jc-notes-box{border:1px solid #ccc;border-radius:4px;min-height:28px;padding:5px 7px;font-size:10px;color:#aaa;margin-top:3px}
+  .jc-footer{border-top:1px solid #e0e0e0;padding-top:6px;display:flex;justify-content:space-between;font-size:10px;color:#999;margin-top:6px}
+  .jc-sig{border-top:1px solid #555;width:150px;margin-top:28px;padding-top:3px;font-size:10px;color:#777}
+
+  @media(max-width:600px){
+    .metrics{grid-template-columns:1fr 1fr}
+    .two-col{grid-template-columns:1fr}
+    .jc-grid{grid-template-columns:1fr}
+  }
+
+  /* Unified detailing modules */
+  .module-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .module-list{display:grid;gap:8px}
+  .module-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:.5px solid #e5e5e5;border-radius:8px;background:#fff}
+  .module-row strong{display:block}.module-row small{color:#888}
+  .check-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .check-option{display:flex;align-items:flex-start;gap:8px;border:.5px solid #ddd;border-radius:8px;padding:9px;background:#fafafa}
+  .check-option input{margin-top:3px}
+  .detail-total{background:#17320d;color:#fff;border-radius:9px;padding:13px 15px;display:flex;justify-content:space-between;align-items:center;margin-top:10px}
+  .detail-total strong{font-size:21px;color:#d7ff3f}
+  .subtabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .subtab{border:.5px solid #ddd;background:#fff;padding:6px 10px;border-radius:999px;font-size:11px}
+  .subtab.active{background:#17320d;color:#fff;border-color:#17320d}
+  @media(max-width:760px){.module-grid,.check-grid{grid-template-columns:1fr}.tabs{overflow-x:auto;flex-wrap:nowrap}.tab{white-space:nowrap}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Detailing By VJ — Job &amp; Inventory Tracker</h1>
+  <div style="display:flex;align-items:center;gap:6px;font-size:11px;opacity:.8">
+    <div id="sync-dot" style="width:8px;height:8px;border-radius:50%;background:#facc15;flex-shrink:0;transition:background .4s"></div>
+    <span id="sync-label">Connecting…</span>
+  </div>
+</div>
+
+<div class="container">
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('log',this)">Coating job</button>
+  <button class="tab" onclick="showTab('detail',this)">Detailing job</button>
+  <button class="tab" onclick="showTab('inventory',this)">Inventory</button>
+  <button class="tab" onclick="showTab('history',this)">Job history</button>
+  <button class="tab" onclick="showTab('services',this)">Services</button>
+  <button class="tab" onclick="showTab('staff',this)">Staff</button>
+  <button class="tab" onclick="showTab('timesheets',this)">Timesheets</button>
+  <button class="tab" onclick="showTab('restock',this)">Restock</button>
+  <button class="tab" onclick="showTab('settings',this)">Settings</button>
+</div>
+
+<!-- LOG A JOB -->
+<div id="tab-log" class="panel active">
+  <div class="two-col">
+    <div>
+      <div class="sec-label">Job details</div>
+      <div class="card">
+        <div class="form-field"><label>Customer name</label><input type="text" id="cust-name" placeholder="e.g. John Smith"></div>
+        <div class="form-field"><label>Customer phone</label><input type="text" id="cust-phone" placeholder="e.g. 0412 345 678"></div>
+        <div class="form-field"><label>Vehicle</label><input type="text" id="cust-vehicle" placeholder="e.g. Toyota HiLux"></div>
+        <div class="form-field"><label>Rego</label><input type="text" id="job-rego" placeholder="e.g. ABC123"></div>
+        <div class="form-field"><label>VIN (optional)</label><input type="text" id="job-vin" placeholder="e.g. WBS12DM09O8D95423"></div>
+        <div class="form-field"><label>Batch number</label><input type="text" id="job-batch" placeholder="e.g. W2EWYPYM"></div>
+        <div class="form-field"><label>Notes</label><input type="text" id="job-notes" placeholder="Optional"></div>
+        <div class="form-field"><label>Date</label><input type="date" id="job-date"></div>
+        <div class="form-field"><label>Car size</label>
+          <select id="car-size" onchange="calcJob()">
+            <option value="small">Small / medium (hatch, sedan, small SUV)</option>
+            <option value="large">Large / ute (7-seater, ute, large SUV)</option>
+          </select>
+        </div>
+        <div class="form-field"><label>Package</label>
+          <select id="pkg-select" onchange="calcJob()">
+            <option value="entry">3-yr entry protection</option>
+            <option value="five" selected>5-yr full protection</option>
+            <option value="seven">7-yr graphene</option>
+          </select>
+        </div>
+        <div class="form-field"><label>Price charged ($)</label><input type="number" id="job-price" value="1490" oninput="calcJob()"></div>
+        <div class="form-field"><label>Deposit paid ($)</label><input type="number" id="job-deposit" value="0" min="0" oninput="calcJob()"></div>
+        <div class="sec-label" style="margin-top:.25rem">Optional coatings — tap to toggle</div>
+        <div class="toggle-group">
+          <button class="toggle-btn on" id="tog-glass"    onclick="toggle('glass')">   <span class="dot"></span>Glass</button>
+          <button class="toggle-btn on" id="tog-wheel"    onclick="toggle('wheel')">   <span class="dot"></span>Wheels</button>
+          <button class="toggle-btn"    id="tog-interior" onclick="toggle('interior')"><span class="dot"></span>Interior</button>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="sec-label">Labour</div>
+      <div class="card">
+        <div class="form-field"><label>Labour mode</label>
+          <select id="labour-mode" onchange="calcJob()">
+            <option value="owner">Owner-operator (my time)</option>
+            <option value="employee">Employee / contractor</option>
+          </select>
+        </div>
+        <div id="owner-fields">
+          <div class="form-field"><label>Hours on job</label><input type="number" id="owner-hrs" value="7" step="0.5" oninput="calcJob()"></div>
+          <div class="form-field"><label>Your target rate ($/hr)</label><input type="number" id="owner-rate" value="80" oninput="calcJob()"></div>
+        </div>
+        <div id="employee-fields" style="display:none">
+          <div class="form-field"><label>Hours on job</label><input type="number" id="emp-hrs" value="7" step="0.5" oninput="calcJob()"></div>
+          <div class="form-field"><label>Staff pay rate ($/hr)</label><input type="number" id="emp-rate" value="35" oninput="calcJob()"></div>
+          <div class="form-field"><label>Super / on-costs (%)</label><input type="number" id="emp-super" value="12" oninput="calcJob()"></div>
+          <div class="form-field"><label>Your mgmt time (hrs)</label><input type="number" id="mgmt-hrs" value="0.5" step="0.5" oninput="calcJob()"></div>
+          <div class="form-field"><label>Your mgmt rate ($/hr)</label><input type="number" id="mgmt-rate" value="80" oninput="calcJob()"></div>
+        </div>
+      </div>
+
+      <div class="sec-label">Cost summary</div>
+      <div class="card">
+        <div class="cost-breakdown">
+          <div class="cost-section-hdr">Consumables</div>
+          <div class="cost-row"><span>Paint coating</span><span id="cb-paint">—</span></div>
+          <div class="cost-row" id="cbr-glass"><span>Glass coating</span><span id="cb-glass">—</span></div>
+          <div class="cost-row" id="cbr-wheel"><span>Wheel coating</span><span id="cb-wheel">—</span></div>
+          <div class="cost-row" id="cbr-interior"><span>Interior coating</span><span id="cb-interior">—</span></div>
+          <div class="cost-row"><span>Sundry prep</span><span id="cb-sundry">—</span></div>
+          <div class="cost-row subtotal"><span>Total consumables</span><span id="cb-cons-total">—</span></div>
+          <div class="cost-section-hdr" style="margin-top:10px">Labour</div>
+          <div class="cost-row" id="cbr-labour-main"><span id="labour-main-lbl">Your time</span><span id="cb-labour-main">—</span></div>
+          <div class="cost-row" id="cbr-labour-mgmt" style="display:none"><span>Your mgmt time</span><span id="cb-labour-mgmt">—</span></div>
+          <div class="cost-row subtotal"><span>Total labour</span><span id="cb-labour-total">—</span></div>
+          <div class="cost-row total"><span>Total job cost</span><span id="cb-total">—</span></div>
+          <div class="cost-row total" style="margin-top:4px"><span>Gross profit</span><span id="cb-gp">—</span></div>
+          <div class="cost-row" style="margin-top:4px"><span>Margin %</span><span id="cb-margin">—</span></div>
+          <div class="cost-row" style="margin-top:10px;padding-top:8px;border-top:0.5px solid #e0e0e0"><span>Deposit paid</span><span id="cb-deposit" style="color:#3B6D11">—</span></div>
+          <div class="cost-row total" style="margin-top:4px"><span>Balance due on day</span><span id="cb-balance" style="color:#854F0B">—</span></div>
+        </div>
+        <div id="stock-alert"></div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="logJob()">Log job + deduct stock</button>
+          <button class="btn btn-print" onclick="previewJobCard()">🖨 Preview job card</button>
+        </div>
+        <div id="log-msg" class="log-msg"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAILING JOB -->
+<div id="tab-detail" class="panel">
+  <div class="module-grid">
+    <div>
+      <div class="sec-label">Customer &amp; vehicle</div>
+      <div class="card">
+        <div class="form-field"><label>Customer name</label><input id="d-customer" placeholder="e.g. John Smith"></div>
+        <div class="form-field"><label>Customer phone</label><input id="d-phone" placeholder="e.g. 0412 345 678"></div>
+        <div class="form-field"><label>Vehicle</label><input id="d-vehicle" placeholder="e.g. Toyota RAV4"></div>
+        <div class="form-field"><label>Rego</label><input id="d-rego" placeholder="e.g. ABC123"></div>
+        <div class="form-field"><label>Date</label><input type="date" id="d-date"></div>
+        <div class="form-field"><label>Vehicle class</label><select id="d-size" onchange="syncDetailHours()"><option value="sedan">Sedan / Hatch</option><option value="small">Wagon / Small SUV</option><option value="large">Large SUV / 7-Seater</option><option value="xl">XL (RAM / Silverado)</option></select></div>
+        <div class="form-field"><label>Notes / vehicle condition</label><textarea id="d-notes" rows="3" placeholder="Pet hair, stains, paint condition, collection instructions…"></textarea></div>
+      </div>
+    </div>
+    <div>
+      <div class="sec-label">Service &amp; team</div>
+      <div class="card">
+        <div class="form-field"><label>Main service</label><select id="d-service" onchange="syncDetailHours()"></select></div>
+        <div class="sec-label" style="margin-top:4px">Add-ons</div>
+        <div id="d-addons" class="check-grid"></div>
+        <div class="form-field" style="margin-top:10px"><label>Assigned staff</label><select id="d-staff" onchange="calcDetailJob()"></select></div>
+        <div class="two-col">
+          <div class="form-field"><label>Estimated hours</label><input type="number" id="d-hours" min="0" step=".25" value="3" oninput="calcDetailJob()"></div>
+          <div class="form-field"><label>Quoted total override ($)</label><input type="number" id="d-override" min="0" step=".01" value="0" oninput="calcDetailJob()"></div>
+          <div class="form-field"><label>Deposit paid ($)</label><input type="number" id="d-deposit" min="0" step=".01" value="0" oninput="calcDetailJob()"></div>
+          <div class="form-field"><label>Status</label><select id="d-status"><option>Booked</option><option>In Progress</option><option>Completed</option><option>Cancelled</option></select></div>
+        </div>
+        <div class="detail-total"><span>Job total</span><strong id="d-total">$0.00</strong></div>
+        <div class="cost-breakdown" style="margin-top:10px">
+          <div class="cost-row"><span>Labour allowance</span><span id="d-labour">$0.00</span></div>
+          <div class="cost-row"><span>Estimated gross profit</span><span id="d-profit">$0.00</span></div>
+          <div class="cost-row"><span>Balance due</span><span id="d-balance">$0.00</span></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+          <button class="btn btn-primary" onclick="logDetailJob()">Log detailing job</button>
+          <button class="btn btn-print" onclick="previewDetailJobCard()">Preview job card</button>
+        </div>
+        <div id="d-msg" class="log-msg"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAILING SERVICES -->
+<div id="tab-services" class="panel">
+  <div class="module-grid">
+    <div><div class="sec-label">Service catalogue</div><div id="detail-service-list" class="module-list"></div></div>
+    <div><div class="sec-label">Add a service</div><div class="card">
+      <div class="form-field"><label>Name</label><input id="svc-name" placeholder="e.g. Engine Bay Detail"></div>
+      <div class="form-field"><label>Type</label><select id="svc-type"><option value="main">Main service</option><option value="addon">Add-on</option></select></div>
+      <div class="form-field"><label>Flat price ($)</label><input type="number" id="svc-price" min="0" step=".01"></div>
+      <div class="form-field"><label>Estimated hours</label><input type="number" id="svc-hours" min="0" step=".25" value="1"></div>
+      <button class="btn btn-primary" onclick="addDetailService()">Add service</button><div id="svc-msg" class="log-msg"></div>
+    </div></div>
+  </div>
+</div>
+
+<!-- STAFF -->
+<div id="tab-staff" class="panel">
+  <div class="module-grid">
+    <div><div class="sec-label">Team</div><div id="staff-list" class="module-list"></div></div>
+    <div><div class="sec-label">Add staff member</div><div class="card">
+      <div class="form-field"><label>Name</label><input id="staff-name"></div>
+      <div class="form-field"><label>Role</label><input id="staff-role" value="Detailer"></div>
+      <div class="form-field"><label>Hourly rate ($)</label><input type="number" id="staff-rate" min="0" step=".01" value="35"></div>
+      <div class="form-field"><label>Phone</label><input id="staff-phone"></div>
+      <button class="btn btn-primary" onclick="addStaffMember()">Add staff</button><div id="staff-msg" class="log-msg"></div>
+    </div></div>
+  </div>
+</div>
+
+<!-- TIMESHEETS -->
+<div id="tab-timesheets" class="panel">
+  <div class="metrics" id="time-metrics"></div>
+  <div class="module-grid">
+    <div><div class="sec-label">Add job-linked time</div><div class="card">
+      <div class="form-field"><label>Date</label><input type="date" id="time-date"></div>
+      <div class="form-field"><label>Staff</label><select id="time-staff"></select></div>
+      <div class="form-field"><label>Job</label><select id="time-job"></select></div>
+      <div class="two-col"><div class="form-field"><label>Start</label><input type="time" id="time-start" value="09:00"></div><div class="form-field"><label>Finish</label><input type="time" id="time-finish" value="17:00"></div></div>
+      <div class="form-field"><label>Unpaid break (minutes)</label><input type="number" id="time-break" min="0" value="30"></div>
+      <button class="btn btn-primary" onclick="addTimeEntry()">Add time entry</button><div id="time-msg" class="log-msg"></div>
+    </div></div>
+    <div><div class="sec-label">Timesheet entries</div><div id="time-list" class="module-list"></div></div>
+  </div>
+</div>
+
+<!-- INVENTORY -->
+<div id="tab-inventory" class="panel">
+  <div class="sec-label">Current stock levels</div>
+  <div class="card" style="padding:0;overflow:hidden"><table id="inv-table"></table></div>
+  <div class="divider"></div>
+  <div class="sec-label">Add custom product</div>
+  <div class="card">
+    <p style="font-size:12px;color:#888;margin-bottom:12px">Add your own products below. Fill in the details and click Save — they will appear in your inventory and restock list.</p>
+    <div id="custom-rows"></div>
+    <button class="btn" style="margin-top:4px;font-size:12px" onclick="addCustomRow()">+ Add another row</button>
+    <div style="margin-top:10px"><button class="btn btn-primary" onclick="saveCustomProducts()">Save custom products</button></div>
+    <div id="custom-msg" class="log-msg"></div>
+  </div>
+  <div class="divider"></div>
+  <div class="sec-label">Add / restock product</div>
+  <div class="card">
+    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+      <div class="form-field" style="flex:1;min-width:180px"><label>Product</label><select id="restock-product"></select></div>
+      <div class="form-field" style="width:90px"><label>Bottles</label><input type="number" id="restock-qty" value="1" min="0.5" step="0.5"></div>
+      <button class="btn btn-primary" onclick="doRestock()" style="height:37px">Add to stock</button>
+    </div>
+  </div>
+</div>
+
+<!-- JOB HISTORY -->
+<div id="tab-history" class="panel">
+  <div class="metrics" id="history-metrics"></div>
+  <div class="card" style="padding:0;overflow:hidden;overflow-x:auto">
+    <table>
+      <thead><tr><th>Date</th><th>Customer</th><th>Vehicle</th><th>Package</th><th>Size</th><th>Coatings</th><th>Price</th><th>Deposit</th><th>Balance due</th><th>Consumables</th><th>Labour</th><th>Total cost</th><th>GP</th><th>Margin</th><th></th></tr></thead>
+      <tbody id="job-tbody"></tbody>
+    </table>
+    <div id="no-jobs" class="empty" style="display:none">No jobs logged yet.</div>
+  </div>
+</div>
+
+<!-- RESTOCK -->
+<div id="tab-restock" class="panel">
+  <div class="sec-label">Restock history</div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table>
+      <thead><tr><th>Date</th><th>Product</th><th>Bottles added</th><th>New stock</th><th>Bottle cost</th><th>Total spent</th></tr></thead>
+      <tbody id="restock-tbody"></tbody>
+    </table>
+    <div id="no-restock" class="empty">No restock events yet.</div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div id="tab-settings" class="panel">
+  <div class="sec-label">Labour defaults</div>
+  <div class="card">
+    <div class="two-col">
+      <div class="form-field"><label>Default owner rate ($/hr)</label><input type="number" id="def-owner-rate" value="80"></div>
+      <div class="form-field"><label>Default employee rate ($/hr)</label><input type="number" id="def-emp-rate" value="35"></div>
+    </div>
+    <button class="btn btn-primary" onclick="saveLabourDefaults()">Save labour defaults</button>
+    <div id="labour-defaults-msg" class="log-msg"></div>
+  </div>
+  <div class="divider"></div>
+  <div class="sec-label">Product settings</div>
+  <div class="card">
+    <p style="font-size:12px;color:#888;margin-bottom:12px">Set how many jobs each bottle covers.</p>
+    <div id="settings-fields"></div>
+    <button class="btn btn-primary" style="margin-top:4px" onclick="saveSettings()">Save product settings</button>
+    <div id="settings-msg" class="log-msg"></div>
+  </div>
+  <div class="divider"></div>
+  <div class="sec-label">Sundry consumable costs per job</div>
+  <div class="card">
+    <div class="two-col">
+      <div class="form-field"><label>Small / medium car ($)</label><input type="number" id="sundry-small" value="55"></div>
+      <div class="form-field"><label>Large / ute ($)</label><input type="number" id="sundry-large" value="65"></div>
+    </div>
+    <button class="btn btn-primary" onclick="saveSundry()">Save sundry costs</button>
+  </div>
+  <div class="divider"></div>
+  <div class="sec-label">Job card — business details</div>
+  <div class="card">
+    <div class="two-col">
+      <div class="form-field"><label>Business name</label><input type="text" id="biz-name" value="Detailing By VJ"></div>
+      <div class="form-field"><label>Phone</label><input type="text" id="biz-phone" value="0431 374 408"></div>
+      <div class="form-field"><label>Email</label><input type="text" id="biz-email" value=""></div>
+      <div class="form-field"><label>Website / socials</label><input type="text" id="biz-web" value="@detailingbyvj"></div>
+    </div>
+    <button class="btn btn-primary" onclick="saveBiz()">Save business details</button>
+    <div id="biz-msg" class="log-msg"></div>
+  </div>
+  <div class="divider"></div>
+  <div class="sec-label">Data management</div>
+  <div class="card">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" onclick="exportCSV()">Export jobs to CSV</button>
+      <button class="btn btn-danger" onclick="clearData()">Clear all data</button>
+    </div>
+    <p style="font-size:11px;color:#aaa;margin-top:8px">Data saved in browser local storage — persists on this device and browser.</p>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<!-- JOB CARD MODAL -->
+<div class="modal-overlay" id="jc-modal" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Job Card Preview</h2>
+      <button class="btn btn-sm" onclick="closeModalDirect()">✕ Close</button>
+    </div>
+    <div class="modal-body" id="jc-modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModalDirect()">Close</button>
+      <button class="btn btn-print" onclick="printCard('jc')">🖨 Print job card</button>
+      <button class="btn btn-print" onclick="printCard('wc')">🖨 Print warranty cert</button>
+      <button class="btn btn-print" onclick="printCard('both')">🖨 Print both</button>
+    </div>
+  </div>
+</div>
+
+<!-- HIDDEN PRINTABLE AREA -->
+<div id="printable-card"></div>
+
+<!-- EDIT JOB MODAL -->
+<div class="edit-overlay" id="edit-overlay" onclick="closeEditOverlay(event)">
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:720px;max-height:94vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="padding:1.25rem 1.5rem;border-bottom:0.5px solid #e0e0e0;display:flex;align-items:center;justify-content:space-between">
+      <h2 style="font-size:15px;font-weight:600">Edit Job</h2>
+      <button class="btn btn-sm" onclick="closeEditOverlayDirect()">✕ Close</button>
+    </div>
+    <div style="padding:1.5rem">
+      <input type="hidden" id="edit-job-idx">
+
+      <div style="font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#888;margin-bottom:.5rem">Customer &amp; vehicle</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem">
+        <div class="form-field"><label>Customer name</label><input type="text" id="edit-customer"></div>
+        <div class="form-field"><label>Customer phone</label><input type="text" id="edit-phone" placeholder="e.g. 0412 345 678"></div>
+        <div class="form-field"><label>Vehicle</label><input type="text" id="edit-vehicle"></div>
+        <div class="form-field"><label>Rego</label><input type="text" id="edit-rego"></div>
+        <div class="form-field"><label>VIN (optional)</label><input type="text" id="edit-vin" placeholder="e.g. WBS12DM09O8D95423"></div>
+        <div class="form-field"><label>Date</label><input type="date" id="edit-date"></div>
+        <div class="form-field"><label>Notes</label><input type="text" id="edit-notes"></div>
+      </div>
+
+      <div style="font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#888;margin-bottom:.5rem">Package &amp; coatings</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem">
+        <div class="form-field"><label>Package</label>
+          <select id="edit-pkg">
+            <option value="3-yr entry">3-yr entry</option>
+            <option value="5-yr full">5-yr full</option>
+            <option value="7-yr graphene">7-yr graphene</option>
+          </select>
+        </div>
+        <div class="form-field"><label>Size</label>
+          <select id="edit-size">
+            <option value="Sm/Med">Small / Medium</option>
+            <option value="Lg/Ute">Large / Ute</option>
+          </select>
+        </div>
+        <div class="form-field"><label>Coatings included</label><input type="text" id="edit-coatings" placeholder="e.g. Paint, Glass, Wheels"></div>
+        <div class="form-field"><label>Batch number</label><input type="text" id="edit-batch" placeholder="e.g. W2EWYPYM"></div>
+      </div>
+
+      <div style="font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#888;margin-bottom:.5rem">Financials</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:.75rem">
+        <div class="form-field"><label>Price charged ($)</label><input type="number" id="edit-price" oninput="recalcEdit()"></div>
+        <div class="form-field"><label>Deposit paid ($)</label><input type="number" id="edit-deposit" value="0" min="0" oninput="recalcEdit()"></div>
+        <div class="form-field"><label>Consumables cost ($)</label><input type="number" id="edit-cons" oninput="recalcEdit()"></div>
+        <div class="form-field"><label>Labour cost ($)</label><input type="number" id="edit-labour" oninput="recalcEdit()"></div>
+      </div>
+      <div class="cost-breakdown">
+        <div class="cost-row subtotal"><span>Total cost (consumables + labour)</span><span id="edit-total">—</span></div>
+        <div class="cost-row total"><span>Gross profit</span><span id="edit-gp">—</span></div>
+        <div class="cost-row" style="margin-top:4px"><span>Margin</span><span id="edit-margin">—</span></div>
+        <div class="cost-row" style="margin-top:10px;padding-top:8px;border-top:0.5px solid #e0e0e0"><span>Deposit paid</span><span id="edit-deposit-show" style="color:#3B6D11">—</span></div>
+        <div class="cost-row total" style="margin-top:4px"><span>Balance due on day</span><span id="edit-balance" style="color:#854F0B">—</span></div>
+      </div>
+      <div id="edit-msg" style="font-size:12px;color:#3B6D11;margin-top:8px;font-weight:500"></div>
+      <div id="edit-err" style="font-size:12px;color:#A32D2D;margin-top:4px;font-weight:500"></div>
+    </div>
+    <div style="padding:1rem 1.5rem;border-top:0.5px solid #e0e0e0;display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-danger btn-sm" onclick="deleteJobFromEdit()">Delete job</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-print btn-sm" onclick="previewJobCardFromEdit('jc')">🖨 Job card</button>
+        <button class="btn btn-print btn-sm" onclick="previewJobCardFromEdit('wc')">🖨 Warranty cert</button>
+        <button class="btn" onclick="closeEditOverlayDirect()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveEditJob()">Save changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DEFAULT_PRODUCTS=[
+  {id:'prolong_lt',name:'Prolong Light (3-yr paint)',unit:'30ml',unitCost:90, usesPerBottle:3,stock:0,low:1},
+  {id:'prolong',   name:'Prolong (5-yr paint)',      unit:'50ml',unitCost:135,usesPerBottle:2,stock:0,low:1},
+  {id:'graphene',  name:'Graphene (7-yr paint)',     unit:'50ml',unitCost:175,usesPerBottle:2,stock:0,low:1},
+  {id:'glass',     name:'Glass coating',             unit:'50ml',unitCost:85, usesPerBottle:4,stock:0,low:1},
+  {id:'wheel',     name:'Prolong Light (wheels)',    unit:'30ml',unitCost:90, usesPerBottle:4,stock:0,low:1},
+  {id:'interior',  name:'Restore (interior/leather)',unit:'50ml',unitCost:90, usesPerBottle:4,stock:0,low:1},
+];
+const PKG_MAP={
+  entry:{label:'3-Year Entry Protection',   paintId:'prolong_lt',hrs:{small:6,large:7},price:{small:990, large:1290}},
+  five: {label:'5-Year Full Protection',    paintId:'prolong',   hrs:{small:7,large:8},price:{small:1490,large:1690}},
+  seven:{label:'7-Year Graphene Protection',paintId:'graphene',  hrs:{small:7,large:8},price:{small:1690,large:1890}},
+};
+
+function ld(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
+function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+
+let products=ld('dbvj_products3',JSON.parse(JSON.stringify(DEFAULT_PRODUCTS)));
+let jobs=ld('dbvj_jobs3',[]);
+let restocks=ld('dbvj_restocks3',[]);
+let sundry=ld('dbvj_sundry3',{small:55,large:65});
+let labourDef=ld('dbvj_labour3',{ownerRate:80,empRate:35});
+let biz=ld('dbvj_biz',{name:'Detailing By VJ',phone:'0431 374 408',email:'',web:'@detailingbyvj'});
+let opts={glass:true,wheel:true,interior:false};
+const DETAIL_SIZE_LABELS={sedan:'Sedan / Hatch',small:'Wagon / Small SUV',large:'Large SUV / 7-Seater',xl:'XL (RAM / Silverado)'};
+const DEFAULT_DETAIL_SERVICES=[
+  {id:'interior',name:'Interior Detail',type:'main',prices:{sedan:199,small:239,large:279,xl:329},hours:{sedan:3,small:3.5,large:4,xl:4.5}},
+  {id:'mini',name:'Mini Detail',type:'main',prices:{sedan:99,small:119,large:139,xl:159},hours:{sedan:1.5,small:1.75,large:2,xl:2.25}},
+  {id:'full',name:'Full Detail',type:'main',prices:{sedan:209,small:239,large:269,xl:309},hours:{sedan:3,small:3.5,large:4,xl:4.5}},
+  {id:'premium',name:'Premium Detail',type:'main',prices:{sedan:349,small:419,large:489,xl:569},hours:{sedan:5,small:5.5,large:6,xl:7}},
+  {id:'presale',name:'Pre-Sale Package',type:'main',prices:{sedan:799,small:899,large:999,xl:1149},hours:{sedan:9,small:10,large:11,xl:12}},
+  {id:'level1',name:'Level 1 Gloss Enhancement',type:'main',prices:{sedan:299,small:399,large:499,xl:599},hours:{sedan:4,small:5,large:6,xl:7}},
+  {id:'level2',name:'Level 2 Paint Enhancement',type:'main',prices:{sedan:399,small:499,large:599,xl:699},hours:{sedan:6,small:7,large:8,xl:9}},
+  {id:'level3',name:'Level 3 Paint Correction',type:'main',prices:{sedan:699,small:899,large:1099,xl:1299},hours:{sedan:10,small:12,large:14,xl:16},from:true},
+  {id:'ceramic',name:'Ceramic Coating',type:'main',prices:{sedan:0,small:0,large:0,xl:0},hours:{sedan:12,small:14,large:16,xl:18},quote:true},
+  {id:'seat',name:'Seat Shampoo / Extraction',type:'addon',price:100,hours:1.5},
+  {id:'carpet',name:'Carpet Shampoo',type:'addon',price:80,hours:1.25},
+  {id:'pet',name:'Pet Hair Removal',type:'addon',price:80,hours:1.25},
+  {id:'odour',name:'Odour Treatment',type:'addon',price:80,hours:1},
+  {id:'headlight',name:'Headlight Restoration',type:'addon',price:120,hours:1.5},
+  {id:'clay',name:'Clay Bar Treatment',type:'addon',price:120,hours:1.5},
+  {id:'sealant',name:'Spray Sealant (3-6 months)',type:'addon',price:100,hours:1}
+];
+let detailServices=ld('dbvj_detail_services',JSON.parse(JSON.stringify(DEFAULT_DETAIL_SERVICES)));
+let staffMembers=ld('dbvj_staff',[{id:'staff_vj',name:'VJ',role:'Owner / Detailer',rate:80,phone:''}]);
+let timeEntries=ld('dbvj_timesheets',[]);
+let cloudConfigIds={};
+
+function pp(id){return products.find(x=>x.id===id);}
+function fmt(n){return '$'+Math.round(n).toLocaleString();}
+function fmtD(n){return '$'+n.toFixed(2);}
+function today(){return new Date().toISOString().split('T')[0];}
+function fmtDate(d){if(!d)return'—';const dt=new Date(d+'T00:00:00');return dt.toLocaleDateString('en-AU',{day:'2-digit',month:'2-digit',year:'numeric'});}
+function jobCardNo(){return 'JC-'+Date.now().toString().slice(-6);}
+
+window.onload=async function(){
+  document.getElementById('job-date').value=today();
+  document.getElementById('owner-rate').value=labourDef.ownerRate;
+  document.getElementById('emp-rate').value=labourDef.empRate;
+  document.getElementById('biz-name').value=biz.name;
+  document.getElementById('biz-phone').value=biz.phone;
+  document.getElementById('biz-email').value=biz.email;
+  document.getElementById('biz-web').value=biz.web;
+  document.getElementById('d-date').value=today();
+  document.getElementById('time-date').value=today();
+  calcJob();renderInv();initCustomRows();renderHistory();renderRestockTab();renderSettings();renderRestockSelect();
+  renderUnifiedModules();
+  await initCloud();
+};
+
+function showTab(id,el){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');el.classList.add('active');
+  if(id==='inventory'){renderInv();initCustomRows();}
+  if(id==='history')renderHistory();
+  if(id==='restock')renderRestockTab();
+  if(id==='settings')renderSettings();
+  if(id==='detail'||id==='services'||id==='staff'||id==='timesheets')renderUnifiedModules();
+}
+
+function toggle(key){
+  opts[key]=!opts[key];
+  document.getElementById('tog-'+key).classList.toggle('on',opts[key]);
+  calcJob();
+}
+
+function getLabour(){
+  const mode=document.getElementById('labour-mode').value;
+  document.getElementById('employee-fields').style.display=mode==='employee'?'':'none';
+  document.getElementById('owner-fields').style.display=mode==='owner'?'':'none';
+  if(mode==='owner'){
+    const hrs=parseFloat(document.getElementById('owner-hrs').value)||7;
+    const rate=parseFloat(document.getElementById('owner-rate').value)||80;
+    return{main:hrs*rate,mgmt:0,mainLbl:'Your time ('+hrs+'hrs @ $'+rate+'/hr)',total:hrs*rate,hrs};
+  } else {
+    const hrs=parseFloat(document.getElementById('emp-hrs').value)||7;
+    const rate=parseFloat(document.getElementById('emp-rate').value)||35;
+    const sup=parseFloat(document.getElementById('emp-super').value)||12;
+    const mHrs=parseFloat(document.getElementById('mgmt-hrs').value)||0;
+    const mRate=parseFloat(document.getElementById('mgmt-rate').value)||80;
+    const empCost=hrs*rate*(1+sup/100);
+    const mgmtCost=mHrs*mRate;
+    return{main:empCost,mgmt:mgmtCost,mainLbl:'Staff ('+hrs+'hrs @ $'+rate+'/hr + '+sup+'% oncosts)',total:empCost+mgmtCost,hrs};
+  }
+}
+
+function getCurrentCalc(){
+  const size=document.getElementById('car-size').value;
+  const pkg=document.getElementById('pkg-select').value;
+  const pkgData=PKG_MAP[pkg];
+  const paintProd=pp(pkgData.paintId);
+  const glassProd=pp('glass');
+  const wheelProd=pp('wheel');
+  const intProd=pp('interior');
+
+  const paintCost=paintProd?paintProd.unitCost/paintProd.usesPerBottle:0;
+  const glassCost=opts.glass&&glassProd?glassProd.unitCost/glassProd.usesPerBottle:0;
+  const wheelCost=opts.wheel&&wheelProd?wheelProd.unitCost/wheelProd.usesPerBottle:0;
+  const intCost  =opts.interior&&intProd?intProd.unitCost/intProd.usesPerBottle:0;
+  const sun=sundry[size]||55;
+  const consTot=paintCost+glassCost+wheelCost+intCost+sun;
+  const labour=getLabour();
+  const totalCost=consTot+labour.total;
+  const price=parseFloat(document.getElementById('job-price').value)||pkgData.price[size];
+  const gp=price-totalCost;
+  const margin=price>0?Math.round((gp/price)*100):0;
+  const flags=['Paint'];
+  if(opts.glass)flags.push('Glass');
+  if(opts.wheel)flags.push('Wheels');
+  if(opts.interior)flags.push('Interior');
+  return{size,pkg,pkgData,paintCost,glassCost,wheelCost,intCost,sun,consTot,labour,totalCost,price,gp,margin,flags,paintProd,glassProd,wheelProd,intProd};
+}
+
+function calcJob(){
+  const c=getCurrentCalc();
+  document.getElementById('cb-paint').textContent=fmtD(c.paintCost);
+  document.getElementById('cb-sundry').textContent=fmt(c.sun);
+  document.getElementById('cb-cons-total').textContent=fmtD(c.consTot);
+  const applyOpt=(cbrId,cbId,prod,cost,on)=>{
+    document.getElementById(cbrId).classList.toggle('dimmed',!on);
+    document.getElementById(cbId).textContent=on&&prod?fmtD(cost):'—';
+  };
+  applyOpt('cbr-glass','cb-glass',c.glassProd,c.glassCost,opts.glass);
+  applyOpt('cbr-wheel','cb-wheel',c.wheelProd,c.wheelCost,opts.wheel);
+  applyOpt('cbr-interior','cb-interior',c.intProd,c.intCost,opts.interior);
+  document.getElementById('labour-main-lbl').textContent=c.labour.mainLbl;
+  document.getElementById('cb-labour-main').textContent=fmtD(c.labour.main);
+  const mgmtRow=document.getElementById('cbr-labour-mgmt');
+  mgmtRow.style.display=c.labour.mgmt>0?'flex':'none';
+  document.getElementById('cb-labour-mgmt').textContent=fmtD(c.labour.mgmt);
+  document.getElementById('cb-labour-total').textContent=fmtD(c.labour.total);
+  document.getElementById('cb-total').textContent=fmtD(c.totalCost);
+  const gpEl=document.getElementById('cb-gp');
+  gpEl.textContent=fmtD(c.gp);
+  gpEl.style.color=c.gp>1000?'#3B6D11':c.gp>400?'#854F0B':'#A32D2D';
+  const mEl=document.getElementById('cb-margin');
+  mEl.textContent=c.margin+'%';
+  mEl.style.color=c.margin>50?'#3B6D11':c.margin>30?'#854F0B':'#A32D2D';
+  const deposit=parseFloat(document.getElementById('job-deposit').value)||0;
+  const balance=Math.max(0,c.price-deposit);
+  document.getElementById('cb-deposit').textContent=deposit>0?'$'+deposit.toFixed(2):'—';
+  document.getElementById('cb-balance').textContent='$'+balance.toFixed(2);
+
+  const alerts=[];
+  if(c.paintProd&&c.paintProd.stock<1/c.paintProd.usesPerBottle)alerts.push(c.paintProd.name+' — OUT OF STOCK');
+  if(opts.glass&&c.glassProd&&c.glassProd.stock<1/c.glassProd.usesPerBottle)alerts.push('Glass coating — OUT OF STOCK');
+  if(opts.wheel&&c.wheelProd&&c.wheelProd.stock<1/c.wheelProd.usesPerBottle)alerts.push('Wheel coating — OUT OF STOCK');
+  if(opts.interior&&c.intProd&&c.intProd.stock<1/c.intProd.usesPerBottle)alerts.push('Interior coating — OUT OF STOCK');
+  document.getElementById('stock-alert').innerHTML=alerts.length?'<div class="alert alert-warn">'+alerts.join('<br>')+'</div>':'';
+}
+
+function buildJobCardHTML(data){
+  const jcNo=data.cardNo||jobCardNo();
+  const coatPills=['Paint','Glass','Wheels','Interior'].map(name=>{
+    const on=data.flags.includes(name);
+    return'<span class="jc-pill'+(on?' on':'')+'">'+name+'</span>';
+  }).join('');
+
+  const checkItems=[
+    'Pre-wash / snow foam',
+    'Iron remover / fallout decontamination',
+    'Clay bar / clay mitt',
+    'Machine polish / paint correction',
+    'Panel wipe / IPA wipe-down (post-polish)',
+    'Paint coating applied',
+    opts.glass||data.flags.includes('Glass')?'Glass coating applied':'',
+    opts.wheel||data.flags.includes('Wheels')?'Wheel coating applied':'',
+    opts.interior||data.flags.includes('Interior')?'Interior / leather coating applied':'',
+    'Final inspection',
+    'Customer walkthrough',
+  ].filter(Boolean).map(item=>'<div class="jc-check-item"><div class="jc-check-box"></div><span>'+item+'</span></div>').join('');
+
+  return`<div class="jc">
+    <div class="jc-header">
+      <div class="jc-biz">
+        <h1>${data.biz.name}</h1>
+        <p>${data.biz.phone}${data.biz.email?' &nbsp;|&nbsp; '+data.biz.email:''}</p>
+        <p>${data.biz.web}</p>
+      </div>
+      <div class="jc-title">
+        <h2>Job Card</h2>
+        <p>#${jcNo}</p>
+        <p>${fmtDate(data.date)}</p>
+      </div>
+    </div>
+
+    <div class="jc-grid">
+      <div class="jc-section">
+        <h3>Customer</h3>
+        <div class="jc-row"><span class="lbl">Name</span><span class="val">${data.customer}</span></div>
+        <div class="jc-row"><span class="lbl">Phone</span><span class="val">${data.phone||'&nbsp;'}</span></div>
+        <div class="jc-row"><span class="lbl">Email</span><span class="val">&nbsp;</span></div>
+      </div>
+      <div class="jc-section">
+        <h3>Vehicle</h3>
+        <div class="jc-row"><span class="lbl">Vehicle</span><span class="val">${data.vehicle}</span></div>
+        <div class="jc-row"><span class="lbl">Rego</span><span class="val">${data.rego||'&nbsp;'}</span></div>
+        <div class="jc-row"><span class="lbl">Colour</span><span class="val">&nbsp;</span></div>
+        <div class="jc-row"><span class="lbl">Size</span><span class="val">${data.size==='small'?'Small / Medium':'Large / Ute'}</span></div>
+      </div>
+    </div>
+
+    <div class="jc-section">
+      <h3>Package &amp; Coatings</h3>
+      <div class="jc-row"><span class="lbl">Package</span><span class="val">${data.pkgData.label}</span></div>
+      <div style="margin-top:8px">${coatPills}</div>
+      ${data.notes?'<div class="jc-row" style="margin-top:8px"><span class="lbl">Notes</span><span class="val">'+data.notes+'</span></div>':''}
+    </div>
+
+    <div class="jc-checklist">
+      <h3>Process checklist</h3>
+      ${checkItems}
+    </div>
+
+    <div class="jc-totals">
+      <div class="jc-row grand"><span class="lbl" style="font-weight:700">Total price</span><span class="val" style="font-size:18px">${fmt(data.price)}</span></div>
+      ${data.deposit>0?`
+      <div class="jc-row" style="margin-top:6px"><span class="lbl" style="color:#555">Deposit paid</span><span class="val" style="color:#2D6A3F;font-size:14px">− ${fmt(data.deposit)}</span></div>
+      <div class="jc-row" style="border-top:2px solid #1a1a1a;margin-top:8px;padding-top:10px"><span class="lbl" style="font-weight:700;font-size:15px">Balance due on day</span><span class="val" style="font-size:20px;color:#854F0B;font-weight:700">${fmt(Math.max(0,data.price-data.deposit))}</span></div>
+      `:`<div class="jc-row" style="border-top:2px solid #1a1a1a;margin-top:8px;padding-top:10px"><span class="lbl" style="font-weight:700;font-size:15px">Amount due on day</span><span class="val" style="font-size:20px;font-weight:700">${fmt(data.price)}</span></div>`}
+    </div>
+
+    <div class="jc-section" style="margin-bottom:6px">
+      <h3>Additional notes / observations</h3>
+      <div class="jc-notes-box">Write notes here...</div>
+    </div>
+
+    <div style="border:1.5px solid #e0e0e0;border-radius:8px;padding:10px 14px;margin-top:12px;background:#fafafa">
+      <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#888;margin-bottom:10px">Customer Acceptance &amp; Satisfaction</p>
+      <p style="font-size:10.5px;color:#444;line-height:1.6;margin-bottom:14px">I, the undersigned, confirm that I have personally inspected the detailing work carried out on my vehicle by <strong>${data.biz.name}</strong> on the date shown above. I am fully satisfied with the quality and standard of workmanship performed, and I acknowledge that all services listed on this job card have been completed to my satisfaction. I understand and agree to follow the aftercare guidelines provided to maintain the integrity of the ceramic coating and uphold the associated warranty.</p>
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:32px">
+        <div class="jc-sig">Customer signature</div>
+        <div class="jc-sig">Print full name</div>
+        <div class="jc-sig">Date</div>
+      </div>
+    </div>
+    <div style="margin-top:20px">
+      <div class="jc-sig" style="margin-top:0">Technician / Applicator signature</div>
+    </div>
+
+    <div class="jc-footer">
+      <span>${data.biz.name} — Job Card #${jcNo}</span>
+      <span>Thank you for your business!</span>
+    </div>
+  </div>`;
+}
+
+
+function buildWarrantyCertHTML(data){
+  const PKG_YEARS={
+    'entry':'3','3-yr entry':'3','3-Year Entry Protection':'3',
+    'five':'5','5-yr full':'5','5-Year Full Protection':'5',
+    'seven':'7','7-yr graphene':'7','7-Year Graphene Protection':'7',
+    '9':'9'
+  };
+  const years=PKG_YEARS[data.pkg]||PKG_YEARS[data.pkgData&&data.pkgData.label]||'5';
+  const applied=new Date(data.date+'T00:00:00');
+  const fmtDateFull=d=>d.toLocaleDateString('en-AU',{day:'2-digit',month:'long',year:'numeric'});
+  const yearOpts=['3','5','7','9'].map(y=>{
+    const sel=y===years;
+    return'<div class="wc-year-opt'+(sel?' selected':'')+'"><div class="wc-year-box'+(sel?' checked':'')+'">'+( sel?'✓':'')+'</div>'+y+' Years</div>';
+  }).join('');
+
+  return`<div class="wc">
+    <div class="wc-inner">
+      <div class="wc-corner wc-corner-tl"></div>
+      <div class="wc-corner wc-corner-tr"></div>
+      <div class="wc-corner wc-corner-bl"></div>
+      <div class="wc-corner wc-corner-br"></div>
+
+      <div class="wc-logo">
+        <h1>${data.biz.name}</h1>
+        <p>Certified Kovalent Coatings Applicator</p>
+      </div>
+
+      <div class="wc-title">
+        <h2>Ceramic Coating Warranty Certificate</h2>
+        <p>Powered by Kovalent Coatings Technology</p>
+      </div>
+
+      <div class="wc-fields">
+        <div class="wc-field"><span class="wc-field-lbl">Customer name</span><span class="wc-field-val">${data.customer}</span></div>
+        <div class="wc-field"><span class="wc-field-lbl">Vehicle</span><span class="wc-field-val">${data.vehicle}</span></div>
+        <div class="wc-field"><span class="wc-field-lbl">Registration</span><span class="wc-field-val">${data.rego||'—'}</span></div>
+        <div class="wc-field"><span class="wc-field-lbl">VIN</span><span class="wc-field-val">${data.vin||'—'}</span></div>
+        <div class="wc-field"><span class="wc-field-lbl">Coating package</span><span class="wc-field-val">${data.pkgData.label}</span></div>
+        <div class="wc-field">
+          <span class="wc-field-lbl">Warranty period</span>
+          <div class="wc-years">${yearOpts}</div>
+        </div>
+        <div class="wc-field"><span class="wc-field-lbl">Date applied</span><span class="wc-field-val">${fmtDateFull(applied)}</span></div>
+        <div class="wc-field"><span class="wc-field-lbl">Batch number</span><span class="wc-field-val">${data.batch||'—'}</span></div>
+        <div class="wc-field"><span class="wc-field-lbl">Installer</span><span class="wc-field-val">${data.biz.name} — Certified Applicator</span></div>
+      </div>
+
+      <div class="wc-divider"></div>
+
+      <div class="wc-two">
+        <div class="wc-section">
+          <h3>✓ Warranty covers</h3>
+          <div class="wc-item"><span class="wc-item-icon" style="color:#1a7a3a">✓</span>Protection against environmental fallout</div>
+          <div class="wc-item"><span class="wc-item-icon" style="color:#1a7a3a">✓</span>UV + oxidation resistance</div>
+          <div class="wc-item"><span class="wc-item-icon" style="color:#1a7a3a">✓</span>Gloss retention</div>
+          <div class="wc-item"><span class="wc-item-icon" style="color:#1a7a3a">✓</span>Chemical resistance</div>
+          <div class="wc-item"><span class="wc-item-icon" style="color:#1a7a3a">✓</span>Hydrophobic performance</div>
+        </div>
+        <div class="wc-section">
+          <h3>✗ Not covered</h3>
+          <div class="wc-item"><span class="wc-item-icon" style="color:#c0392b">✗</span>Physical damage, chips, accidents, vandalism</div>
+          <div class="wc-item"><span class="wc-item-icon" style="color:#c0392b">✗</span>Poor washing methods or neglect</div>
+          <div class="wc-item"><span class="wc-item-icon" style="color:#c0392b">✗</span>Bird/bat droppings left to etch</div>
+          <div class="wc-item"><span class="wc-item-icon" style="color:#c0392b">✗</span>Commercial use vehicles</div>
+          <div class="wc-item"><span class="wc-item-icon" style="color:#c0392b">✗</span>Repainting or panel repairs</div>
+          <div class="wc-item"><span class="wc-item-icon" style="color:#c0392b">✗</span>Automated car washes</div>
+        </div>
+      </div>
+
+      <div class="wc-divider"></div>
+
+      <div class="wc-maintenance">
+        <h3>Maintenance requirements — to keep warranty valid</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 20px">
+          <div class="wc-maint-item"><span style="color:#1a1a1a">•</span>Wash every 2–4 weeks</div>
+          <div class="wc-maint-item"><span style="color:#1a1a1a">•</span>No polishing / cutting / waxing</div>
+          <div class="wc-maint-item"><span style="color:#1a1a1a">•</span>Use pH-neutral shampoo only</div>
+          <div class="wc-maint-item"><span style="color:#1a1a1a">•</span>Annual inspection by ${data.biz.name}</div>
+          <div class="wc-maint-item"><span style="color:#1a1a1a">•</span>Remove contaminants promptly</div>
+        </div>
+      </div>
+
+      <div class="wc-claim">
+        <h3>Claim process</h3>
+        <p>• Email: ${data.biz.email||'info@detailingbyvj.com.au'}</p>
+        <p>• Phone: ${data.biz.phone}</p>
+        <p>• Provide photos + description of issue</p>
+        <p>• Present this warranty certificate</p>
+        <p>• Vehicle must pass inspection</p>
+      </div>
+
+      <div class="wc-sigs">
+        <div><div class="wc-sig-line">Authorised Signature</div></div>
+        <div><div class="wc-sig-line">Customer Signature</div></div>
+      </div>
+
+      <div class="wc-footer">
+        <p>${data.biz.name} reserves the right to deny warranty if maintenance schedule was not followed.</p>
+        <p style="margin-top:4px">${data.biz.phone}${data.biz.email?' &nbsp;|&nbsp; '+data.biz.email:''} &nbsp;|&nbsp; ${data.biz.web}</p>
+      </div>
+    </div>
+  </div>`;
+}
+
+function previewJobCard(){
+  const c=getCurrentCalc();
+  const data={
+    cardNo:jobCardNo(),
+    biz,
+    date:document.getElementById('job-date').value||today(),
+    customer:document.getElementById('cust-name').value||'(Customer name)',
+    phone:document.getElementById('cust-phone').value||'',
+    vehicle:document.getElementById('cust-vehicle').value||'(Vehicle)',
+    rego:document.getElementById('job-rego').value||'',
+    vin:document.getElementById('job-vin').value||'',
+    batch:document.getElementById('job-batch').value||'',
+    notes:document.getElementById('job-notes').value||'',
+    size:document.getElementById('car-size').value,
+    pkg:document.getElementById('pkg-select').value,
+    pkgData:c.pkgData,
+    flags:c.flags,
+    consTot:c.consTot,
+    labour:c.labour,
+    totalCost:c.totalCost,
+    price:c.price,
+    gp:c.gp,
+    margin:c.margin,
+  };
+  const jobHtml=buildJobCardHTML(data);
+  const wHtml=buildWarrantyCertHTML(data);
+  // Modal shows tabs for job card vs warranty
+  const modalHtml=`
+    <div style="display:flex;gap:8px;margin-bottom:1rem">
+      <button class="btn btn-primary" id="tab-jc-btn" onclick="switchPreviewTab('jc')" style="font-size:12px;padding:6px 14px">Job card</button>
+      <button class="btn" id="tab-wc-btn" onclick="switchPreviewTab('wc')" style="font-size:12px;padding:6px 14px">Warranty certificate</button>
+    </div>
+    <div id="preview-jc">${jobHtml}</div>
+    <div id="preview-wc" style="display:none">${wHtml}</div>
+  `;
+  document.getElementById('jc-modal-body').innerHTML=modalHtml;
+  // Printable = both pages
+  document.getElementById('printable-card').innerHTML=jobHtml+wHtml;
+  document.getElementById('jc-modal').classList.add('open');
+  window._lastCardData=data;
+  window._jobHtml=jobHtml;
+  window._wHtml=wHtml;
+}
+
+function switchPreviewTab(tab){
+  document.getElementById('preview-jc').style.display=tab==='jc'?'':'none';
+  document.getElementById('preview-wc').style.display=tab==='wc'?'':'none';
+  document.getElementById('tab-jc-btn').className=tab==='jc'?'btn btn-primary':'btn';
+  document.getElementById('tab-wc-btn').className=tab==='wc'?'btn btn-primary':'btn';
+}
+
+function printCard(which){
+  const jobHtml=window._jobHtml||'';
+  const wHtml=window._wHtml||'';
+  if(which==='jc') document.getElementById('printable-card').innerHTML=jobHtml;
+  else if(which==='wc') document.getElementById('printable-card').innerHTML=wHtml;
+  else document.getElementById('printable-card').innerHTML=jobHtml+wHtml;
+  window.print();
+}
+
+function closeModal(e){
+  if(e.target===document.getElementById('jc-modal'))closeModalDirect();
+}
+function closeModalDirect(){
+  document.querySelectorAll('#jc-modal .modal-footer button').forEach(b=>b.style.display='');
+  document.getElementById('jc-modal').classList.remove('open');
+}
+
+function logJob(){
+  const c=getCurrentCalc();
+  const paintProd=c.paintProd;
+  const glassProd=c.glassProd;
+  const wheelProd=c.wheelProd;
+  const intProd=c.intProd;
+
+  if(paintProd)paintProd.stock=Math.max(0,parseFloat((paintProd.stock-1/paintProd.usesPerBottle).toFixed(3)));paintProd._sc=true;
+  if(opts.glass&&glassProd){glassProd.stock=Math.max(0,parseFloat((glassProd.stock-1/glassProd.usesPerBottle).toFixed(3)));glassProd._sc=true;}
+  if(opts.wheel&&wheelProd){wheelProd.stock=Math.max(0,parseFloat((wheelProd.stock-1/wheelProd.usesPerBottle).toFixed(3)));wheelProd._sc=true;}
+  if(opts.interior&&intProd){intProd.stock=Math.max(0,parseFloat((intProd.stock-1/intProd.usesPerBottle).toFixed(3)));intProd._sc=true;}
+
+  jobs.unshift({
+    date:document.getElementById('job-date').value||today(),
+    customer:document.getElementById('cust-name').value||'—',
+    phone:document.getElementById('cust-phone').value||'',
+    vehicle:document.getElementById('cust-vehicle').value||'—',
+    rego:document.getElementById('job-rego').value||'',
+    vin:document.getElementById('job-vin').value||'',
+    batch:document.getElementById('job-batch').value||'',
+    notes:document.getElementById('job-notes').value||'',
+    pkg:c.pkgData.label,
+    size:c.size==='small'?'Sm/Med':'Lg/Ute',
+    coatings:c.flags.join(', '),
+    price:c.price,
+    deposit:parseFloat(document.getElementById('job-deposit').value)||0,
+    balance:Math.max(0,c.price-(parseFloat(document.getElementById('job-deposit').value)||0)),
+    cons:parseFloat(c.consTot.toFixed(2)),
+    labour:parseFloat(c.labour.total.toFixed(2)),
+    cost:parseFloat(c.totalCost.toFixed(2)),
+    gp:parseFloat(c.gp.toFixed(2)),
+    margin:c.margin,
+  });
+  sv('dbvj_jobs3',jobs);sv('dbvj_products3',products);
+  document.getElementById('log-msg').textContent='Job logged. Stock deducted: '+c.flags.join(', ')+'.';
+  ['cust-name','cust-phone','cust-vehicle','job-rego','job-vin','job-batch','job-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('job-deposit').value='0';
+  document.getElementById('job-date').value=today();
+  calcJob();
+}
+
+function renderInv(){
+  const tbl=document.getElementById('inv-table');
+  tbl.innerHTML='<thead><tr><th>Product</th><th>Unit</th><th>Cost/bottle</th><th>Uses/bottle</th><th>Cost/use</th><th>Stock</th><th>Status</th></tr></thead>';
+  const tb=document.createElement('tbody');
+  products.forEach(prod=>{
+    const maxStock=Math.max(prod.low*5,5);
+    const pct=Math.min(100,Math.round((prod.stock/maxStock)*100));
+    const status=prod.stock<0.01?'<span class="badge badge-out">No stock</span>':prod.stock<=prod.low?'<span class="badge badge-low">Low — reorder</span>':'<span class="badge badge-ok">OK</span>';
+    const barCol=prod.stock<0.01?'#E24B4A':prod.stock<=prod.low?'#EF9F27':'#1D9E75';
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td style="font-weight:500">'+prod.name+'</td><td style="color:#888">'+prod.unit+'</td><td>'+fmt(prod.unitCost)+'</td><td>'+prod.usesPerBottle+'</td><td style="font-weight:500">'+fmt(prod.unitCost/prod.usesPerBottle)+'</td><td><div class="stock-bar-wrap"><div class="stock-bar" style="width:'+pct+'%;background:'+barCol+'"></div></div>'+prod.stock.toFixed(2)+' btl</td><td>'+status+'</td>';
+    tb.appendChild(tr);
+  });
+  tbl.appendChild(tb);renderRestockSelect();
+}
+
+function renderRestockSelect(){
+  const sel=document.getElementById('restock-product');
+  if(!sel)return;
+  sel.innerHTML=products.map(p=>'<option value="'+p.id+'">'+p.name+'</option>').join('');
+}
+
+function doRestock(){
+  const id=document.getElementById('restock-product').value;
+  const qty=parseFloat(document.getElementById('restock-qty').value)||1;
+  const prod=pp(id);
+  prod.stock=parseFloat((prod.stock+qty).toFixed(3));
+  restocks.unshift({date:today(),product:prod.name,qty,stock:prod.stock,unitCost:prod.unitCost,total:qty*prod.unitCost});
+  sv('dbvj_products3',products);sv('dbvj_restocks3',restocks);
+  renderInv();renderRestockTab();
+}
+
+function renderRestockTab(){
+  const tb=document.getElementById('restock-tbody');
+  const no=document.getElementById('no-restock');
+  if(!restocks.length){tb.innerHTML='';no.style.display='block';return;}
+  no.style.display='none';
+  tb.innerHTML=restocks.map(r=>'<tr><td>'+fmtDate(r.date)+'</td><td>'+r.product+'</td><td>+'+r.qty+'</td><td>'+r.stock.toFixed(2)+' btl</td><td>'+fmt(r.unitCost)+'</td><td style="font-weight:500">'+fmt(r.total)+'</td></tr>').join('');
+}
+
+function renderHistory(){
+  const tbody=document.getElementById('job-tbody');
+  const noJobs=document.getElementById('no-jobs');
+  const metrics=document.getElementById('history-metrics');
+  if(!jobs.length){tbody.innerHTML='';noJobs.style.display='block';metrics.innerHTML='';return;}
+  noJobs.style.display='none';
+  const totalRev=jobs.reduce((s,j)=>s+j.price,0);
+  const totalCons=jobs.reduce((s,j)=>s+j.cons,0);
+  const totalLabour=jobs.reduce((s,j)=>s+j.labour,0);
+  const totalGP=jobs.reduce((s,j)=>s+j.gp,0);
+  metrics.innerHTML=[
+    {label:'Jobs logged',val:jobs.length,sub:'total'},
+    {label:'Total revenue',val:fmt(totalRev),sub:''},
+    {label:'Labour cost',val:fmt(totalLabour),sub:'all jobs'},
+    {label:'Avg gross profit',val:fmt(Math.round(totalGP/jobs.length)),sub:'per job'},
+  ].map(m=>'<div class="metric"><div class="metric-label">'+m.label+'</div><div class="metric-value">'+m.val+'</div><div class="metric-sub">'+m.sub+'</div></div>').join('');
+  tbody.innerHTML=jobs.map((j,i)=>
+    '<tr>'    +'<td>'+fmtDate(j.date)+'</td>'    +'<td>'+j.customer+'</td>'    +'<td>'+j.vehicle+'</td>'    +'<td>'+j.pkg+'</td>'    +'<td>'+j.size+'</td>'    +'<td style="font-size:11px;color:#888">'+j.coatings+'</td>'    +'<td>'+fmt(j.price)+'</td>'    +'<td style="color:#3B6D11">'+(j.deposit>0?'$'+parseFloat(j.deposit).toFixed(2):'—')+'</td>'    +'<td style="color:#854F0B;font-weight:500">'+(j.deposit>0?'$'+Math.max(0,parseFloat(j.price)-parseFloat(j.deposit)).toFixed(2):'—')+'</td>'    +'<td>'+fmt(j.cons)+'</td>'    +'<td>'+fmt(j.labour)+'</td>'    +'<td>'+fmt(j.cost)+'</td>'    +'<td style="color:#3B6D11;font-weight:500">'+fmt(j.gp)+'</td>'    +'<td>'+j.margin+'%</td>'    +'<td style="white-space:nowrap"><button class="btn btn-sm" style="margin-right:4px" onclick="openEditJob('+i+')">Edit</button><button class="btn btn-sm btn-danger" onclick="deleteJob('+i+')">Del</button></td>'    +'</tr>'
+  ).join('');
+}
+
+function deleteJob(i){
+  if(!confirm('Delete this job record?'))return;
+  jobs.splice(i,1);sv('dbvj_jobs3',jobs);renderHistory();
+}
+
+function renderSettings(){
+  document.getElementById('settings-fields').innerHTML=products.map(prod=>
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;padding-bottom:10px;border-bottom:0.5px solid #f0f0f0">'
+    +'<div class="form-field"><label>'+prod.name+'</label><input type="text" disabled value="'+prod.unit+' — '+fmt(prod.unitCost)+'/bottle"></div>'
+    +'<div class="form-field"><label>Uses per bottle</label><input type="number" id="set-uses-'+prod.id+'" value="'+prod.usesPerBottle+'" min="1" max="20"></div>'
+    +'<div class="form-field"><label>Low stock alert at</label><input type="number" id="set-low-'+prod.id+'" value="'+prod.low+'" min="0.5" step="0.5" max="10"></div>'
+    +'</div>'
+  ).join('');
+  document.getElementById('sundry-small').value=sundry.small;
+  document.getElementById('sundry-large').value=sundry.large;
+  document.getElementById('def-owner-rate').value=labourDef.ownerRate;
+  document.getElementById('def-emp-rate').value=labourDef.empRate;
+  document.getElementById('biz-name').value=biz.name;
+  document.getElementById('biz-phone').value=biz.phone;
+  document.getElementById('biz-email').value=biz.email;
+  document.getElementById('biz-web').value=biz.web;
+}
+
+function saveSettings(){
+  products.forEach(prod=>{
+    const u=parseInt(document.getElementById('set-uses-'+prod.id).value);
+    const l=parseFloat(document.getElementById('set-low-'+prod.id).value);
+    if(u>0)prod.usesPerBottle=u;
+    if(l>0)prod.low=l;
+  });
+  sv('dbvj_products3',products);
+  document.getElementById('settings-msg').textContent='Product settings saved.';
+  calcJob();
+}
+
+function saveSundry(){
+  sundry.small=parseFloat(document.getElementById('sundry-small').value)||55;
+  sundry.large=parseFloat(document.getElementById('sundry-large').value)||65;
+  sv('dbvj_sundry3',sundry);calcJob();
+}
+
+function saveLabourDefaults(){
+  labourDef.ownerRate=parseFloat(document.getElementById('def-owner-rate').value)||80;
+  labourDef.empRate=parseFloat(document.getElementById('def-emp-rate').value)||35;
+  sv('dbvj_labour3',labourDef);
+  document.getElementById('owner-rate').value=labourDef.ownerRate;
+  document.getElementById('emp-rate').value=labourDef.empRate;
+  document.getElementById('labour-defaults-msg').textContent='Labour defaults saved.';
+  calcJob();
+}
+
+function saveBiz(){
+  biz.name=document.getElementById('biz-name').value||'Detailing By VJ';
+  biz.phone=document.getElementById('biz-phone').value||'';
+  biz.email=document.getElementById('biz-email').value||'';
+  biz.web=document.getElementById('biz-web').value||'';
+  sv('dbvj_biz',biz);
+  document.getElementById('biz-msg').textContent='Business details saved.';
+}
+
+function exportCSV(){
+  if(!jobs.length){alert('No jobs to export yet.');return;}
+  const hdr=['Date','Customer','Vehicle','Rego','Package','Size','Coatings','Price','Consumables','Labour','Total Cost','Gross Profit','Margin %','Notes'];
+  const rows=jobs.map(j=>[fmtDate(j.date),'"'+j.customer+'"','"'+j.vehicle+'"',j.rego||'',j.pkg,j.size,'"'+j.coatings+'"',j.price,j.cons,j.labour,j.cost,j.gp,j.margin,'"'+(j.notes||'')+'"'].join(','));
+  const blob=new Blob([[hdr.join(','),...rows].join('\n')],{type:'text/csv'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='DBVJ_Jobs_'+today()+'.csv';a.click();
+}
+
+function initCustomRows(){
+  const container = document.getElementById('custom-rows');
+  if(!container) return;
+  container.innerHTML = '';
+  // Always show 5 blank rows on load, pre-fill any saved customs
+  const saved = products.filter(p => p.custom);
+  const total = Math.max(5, saved.length + (5 - saved.length % 5));
+  for(let i = 0; i < total; i++){
+    const s = saved[i] || {};
+    addCustomRow(s.name||'', s.unit||'', s.unitCost||'', s.usesPerBottle||'');
+  }
+}
+
+function addCustomRow(name='', unit='', cost='', uses=''){
+  const container = document.getElementById('custom-rows');
+  const idx = container.children.length;
+  const row = document.createElement('div');
+  row.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:8px;margin-bottom:8px;align-items:center';
+  row.innerHTML =
+    '<input type="text" placeholder="Product name e.g. Graphene Matrix" value="'+name+'" class="cr-name">'
+    +'<input type="text" placeholder="Unit e.g. 50ml" value="'+unit+'" class="cr-unit">'
+    +'<input type="number" placeholder="Cost/bottle $" value="'+cost+'" class="cr-cost" min="0" step="0.01">'
+    +'<input type="number" placeholder="Uses/bottle" value="'+uses+'" class="cr-uses" min="1" step="1">'
+    +'<button class="btn btn-sm btn-danger" onclick="this.parentElement.remove()" title="Remove row">✕</button>';
+  container.appendChild(row);
+}
+
+function saveCustomProducts(){
+  // Remove old custom products
+  products = products.filter(p => !p.custom);
+
+  const rows = document.querySelectorAll('#custom-rows > div');
+  let added = 0;
+  rows.forEach(row => {
+    const name = row.querySelector('.cr-name').value.trim();
+    const unit = row.querySelector('.cr-unit').value.trim();
+    const cost = parseFloat(row.querySelector('.cr-cost').value);
+    const uses = parseInt(row.querySelector('.cr-uses').value);
+    if(name && cost > 0 && uses > 0){
+      const id = 'custom_' + name.toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,20) + '_' + Date.now();
+      products.push({id, name, unit: unit||'—', unitCost: cost, usesPerBottle: uses, stock: 0, low: 1, custom: true});
+      added++;
+    }
+  });
+  sv('dbvj_products3', products);
+  document.getElementById('custom-msg').textContent = added + ' custom product(s) saved. Go to Restock to add stock.';
+  renderInv();
+  renderRestockSelect();
+}
+
+// Unified detailing, services, staff and timesheets
+function h(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function detailServicePrice(s,size){return s.type==='addon'?(parseFloat(s.price)||0):(parseFloat((s.prices||{})[size])||0);}
+function detailServiceHours(s,size){return s.type==='addon'?(parseFloat(s.hours)||0):(parseFloat((s.hours||{})[size])||0);}
+function selectedDetailAddons(){return Array.from(document.querySelectorAll('.d-addon:checked')).map(x=>x.value);}
+function getDetailCalc(){
+  const size=document.getElementById('d-size').value;
+  const main=detailServices.find(s=>s.id===document.getElementById('d-service').value)||detailServices.find(s=>s.type==='main');
+  const addons=selectedDetailAddons().map(id=>detailServices.find(s=>s.id===id)).filter(Boolean);
+  const base=main?detailServicePrice(main,size):0;
+  const addonTotal=addons.reduce((n,s)=>n+detailServicePrice(s,size),0);
+  const override=parseFloat(document.getElementById('d-override').value)||0;
+  const total=override>0?override:base+addonTotal;
+  const staff=staffMembers.find(s=>s.id===document.getElementById('d-staff').value)||staffMembers[0];
+  const suggested=(main?detailServiceHours(main,size):0)+addons.reduce((n,s)=>n+detailServiceHours(s,size),0);
+  const hours=parseFloat(document.getElementById('d-hours').value)||suggested||0;
+  const labour=hours*(staff?parseFloat(staff.rate)||0:0);
+  const deposit=parseFloat(document.getElementById('d-deposit').value)||0;
+  return{size,main,addons,total,staff,hours,labour,profit:total-labour,deposit,balance:Math.max(0,total-deposit)};
+}
+function calcDetailJob(){
+  const c=getDetailCalc();
+  document.getElementById('d-total').textContent=fmtD(c.total);
+  document.getElementById('d-labour').textContent=fmtD(c.labour);
+  document.getElementById('d-profit').textContent=fmtD(c.profit);
+  document.getElementById('d-balance').textContent=fmtD(c.balance);
+}
+function syncDetailHours(){const main=detailServices.find(s=>s.id===document.getElementById('d-service').value);if(main)document.getElementById('d-hours').value=detailServiceHours(main,document.getElementById('d-size').value)||0;calcDetailJob();}
+function renderDetailForm(){
+  const svc=document.getElementById('d-service'),staff=document.getElementById('d-staff');
+  const oldSvc=svc.value,oldStaff=staff.value;
+  svc.innerHTML=detailServices.filter(s=>s.type==='main').map(s=>'<option value="'+h(s.id)+'">'+h(s.name)+'</option>').join('');
+  if(detailServices.some(s=>s.id===oldSvc))svc.value=oldSvc;
+  document.getElementById('d-addons').innerHTML=detailServices.filter(s=>s.type==='addon').map(s=>'<label class="check-option"><input class="d-addon" type="checkbox" value="'+h(s.id)+'" onchange="calcDetailJob()"><span><strong>'+h(s.name)+'</strong><small>'+fmtD(parseFloat(s.price)||0)+'</small></span></label>').join('')||'<div class="empty">No add-ons configured.</div>';
+  staff.innerHTML=staffMembers.map(s=>'<option value="'+h(s.id)+'">'+h(s.name)+' — '+fmtD(parseFloat(s.rate)||0)+'/hr</option>').join('');
+  if(staffMembers.some(s=>s.id===oldStaff))staff.value=oldStaff;
+  const main=detailServices.find(s=>s.id===svc.value);if(main)document.getElementById('d-hours').value=detailServiceHours(main,document.getElementById('d-size').value)||3;
+  calcDetailJob();
+}
+function renderDetailServices(){
+  document.getElementById('detail-service-list').innerHTML=detailServices.map(s=>{
+    const price=s.type==='addon'?fmtD(parseFloat(s.price)||0):Object.keys(DETAIL_SIZE_LABELS).map(k=>DETAIL_SIZE_LABELS[k]+' '+(s.quote?'Quote':(s.from?'from ':'')+fmtD(detailServicePrice(s,k)))).join(' · ');
+    return'<div class="module-row"><div><strong>'+h(s.name)+'</strong><small>'+h(s.type==='addon'?'Add-on · '+price:price)+'</small></div><button class="btn btn-sm btn-danger" onclick="removeDetailService(\''+h(s.id)+'\')">Delete</button></div>';
+  }).join('');
+}
+async function addDetailService(){
+  const name=document.getElementById('svc-name').value.trim(),type=document.getElementById('svc-type').value,price=parseFloat(document.getElementById('svc-price').value)||0,hours=parseFloat(document.getElementById('svc-hours').value)||1;
+  if(!name){document.getElementById('svc-msg').textContent='Enter a service name.';return;}
+  const id='svc_'+Date.now();detailServices.push(type==='addon'?{id,name,type,price,hours}:{id,name,type,prices:{sedan:price,small:price,large:price,xl:price},hours:{sedan:hours,small:hours,large:hours,xl:hours}});
+  sv('dbvj_detail_services',detailServices);await cloudSaveConfig('detail_services',detailServices);document.getElementById('svc-name').value='';document.getElementById('svc-msg').textContent='Service added.';renderUnifiedModules();
+}
+async function removeDetailService(id){if(!confirm('Delete this service?'))return;detailServices=detailServices.filter(s=>s.id!==id);sv('dbvj_detail_services',detailServices);await cloudSaveConfig('detail_services',detailServices);renderUnifiedModules();}
+function renderStaffMembers(){document.getElementById('staff-list').innerHTML=staffMembers.map(s=>'<div class="module-row"><div><strong>'+h(s.name)+'</strong><small>'+h(s.role)+' · '+fmtD(parseFloat(s.rate)||0)+'/hr'+(s.phone?' · '+h(s.phone):'')+'</small></div><button class="btn btn-sm btn-danger" onclick="removeStaffMember(\''+h(s.id)+'\')">Delete</button></div>').join('')||'<div class="empty">No staff configured.</div>';}
+async function addStaffMember(){const name=document.getElementById('staff-name').value.trim();if(!name){document.getElementById('staff-msg').textContent='Enter a staff name.';return;}staffMembers.push({id:'staff_'+Date.now(),name,role:document.getElementById('staff-role').value||'Detailer',rate:parseFloat(document.getElementById('staff-rate').value)||0,phone:document.getElementById('staff-phone').value||''});sv('dbvj_staff',staffMembers);await cloudSaveConfig('staff',staffMembers);document.getElementById('staff-name').value='';document.getElementById('staff-msg').textContent='Staff member added.';renderUnifiedModules();}
+async function removeStaffMember(id){if(!confirm('Delete this staff member? Existing timesheets remain.'))return;staffMembers=staffMembers.filter(s=>s.id!==id);sv('dbvj_staff',staffMembers);await cloudSaveConfig('staff',staffMembers);renderUnifiedModules();}
+function renderUnifiedModules(){renderDetailForm();renderDetailServices();renderStaffMembers();renderTimesheets();}
+
+function jobLinkKey(j){return String(j._id||[j.date,j.customer,j.rego,j.pkg].join('|'));}
+function timeHours(t){const a=String(t.start).split(':').map(Number),b=String(t.finish).split(':').map(Number);return Math.max(0,((b[0]*60+b[1])-(a[0]*60+a[1])-(parseFloat(t.breakMins)||0))/60);}
+function renderTimesheets(){
+  const staffSel=document.getElementById('time-staff'),jobSel=document.getElementById('time-job');
+  staffSel.innerHTML=staffMembers.map(s=>'<option value="'+h(s.id)+'">'+h(s.name)+'</option>').join('');
+  jobSel.innerHTML=jobs.map(j=>'<option value="'+h(jobLinkKey(j))+'">'+h(fmtDate(j.date)+' · '+j.customer+' · '+(j.rego||j.vehicle))+'</option>').join('');
+  const totalHours=timeEntries.reduce((n,t)=>n+timeHours(t),0),totalCost=timeEntries.reduce((n,t)=>{const s=staffMembers.find(x=>x.id===t.staffId);return n+timeHours(t)*(s?parseFloat(s.rate)||0:0);},0);
+  document.getElementById('time-metrics').innerHTML=[{label:'Entries',val:timeEntries.length,sub:'job-linked'},{label:'Total hours',val:totalHours.toFixed(2),sub:'all staff'},{label:'Labour cost',val:fmtD(totalCost),sub:'staff rates'},{label:'Team',val:staffMembers.length,sub:'members'}].map(m=>'<div class="metric"><div class="metric-label">'+m.label+'</div><div class="metric-value">'+m.val+'</div><div class="metric-sub">'+m.sub+'</div></div>').join('');
+  document.getElementById('time-list').innerHTML=timeEntries.map(t=>{const s=staffMembers.find(x=>x.id===t.staffId),j=jobs.find(x=>jobLinkKey(x)===t.jobKey);return'<div class="module-row"><div><strong>'+h(s?s.name:'Removed staff')+' · '+timeHours(t).toFixed(2)+' hrs</strong><small>'+h(fmtDate(t.date))+' · '+h(j?j.customer+' / '+(j.rego||j.vehicle):'Job unavailable')+' · '+h(t.start)+'-'+h(t.finish)+'</small></div><button class="btn btn-sm btn-danger" onclick="removeTimeEntry(\''+h(t.id)+'\')">Delete</button></div>';}).join('')||'<div class="empty">No timesheet entries.</div>';
+}
+async function addTimeEntry(){const entry={id:'time_'+Date.now(),date:document.getElementById('time-date').value||today(),staffId:document.getElementById('time-staff').value,jobKey:document.getElementById('time-job').value,start:document.getElementById('time-start').value,finish:document.getElementById('time-finish').value,breakMins:parseFloat(document.getElementById('time-break').value)||0};if(!entry.staffId||!entry.jobKey||timeHours(entry)<=0){document.getElementById('time-msg').textContent='Select a staff member and job, with a valid finish time.';return;}timeEntries.unshift(entry);sv('dbvj_timesheets',timeEntries);await cloudSaveConfig('timesheets',timeEntries);document.getElementById('time-msg').textContent='Time entry added.';renderTimesheets();}
+async function removeTimeEntry(id){if(!confirm('Delete this time entry?'))return;timeEntries=timeEntries.filter(t=>t.id!==id);sv('dbvj_timesheets',timeEntries);await cloudSaveConfig('timesheets',timeEntries);renderTimesheets();}
+function makeDetailMeta(c){return{kind:'detailing',status:document.getElementById('d-status').value,serviceId:c.main?c.main.id:'',addons:c.addons.map(s=>s.id),staffId:c.staff?c.staff.id:'',hours:c.hours,rawNotes:document.getElementById('d-notes').value||''};}
+function packDetailMeta(meta){try{return btoa(unescape(encodeURIComponent(JSON.stringify(meta))));}catch(e){return '';}}
+function unpackDetailMeta(notes){const m=String(notes||'').match(/\[\[DETAIL_META:([^\]]+)\]\]/);if(!m)return null;try{return JSON.parse(decodeURIComponent(escape(atob(m[1]))));}catch(e){return null;}}
+function visibleDetailNotes(notes){return String(notes||'').replace(/\n?\[\[DETAIL_META:[^\]]+\]\]/,'').trim();}
+async function logDetailJob(){
+  const c=getDetailCalc(),customer=document.getElementById('d-customer').value.trim(),vehicle=document.getElementById('d-vehicle').value.trim();
+  if(!customer||!vehicle||!c.main){document.getElementById('d-msg').textContent='Customer, vehicle and service are required.';return;}
+  const services=[c.main.name].concat(c.addons.map(s=>s.name)),margin=c.total>0?Math.round((c.profit/c.total)*100):0,meta=makeDetailMeta(c);
+  const job={date:document.getElementById('d-date').value||today(),customer,phone:document.getElementById('d-phone').value||'',vehicle,rego:document.getElementById('d-rego').value||'',notes:(document.getElementById('d-notes').value||'')+'\n[[DETAIL_META:'+packDetailMeta(meta)+']]',pkg:'Detailing: '+services.join(', '),size:DETAIL_SIZE_LABELS[c.size],coatings:c.staff?c.staff.name:'Unassigned',price:c.total,deposit:c.deposit,balance:c.balance,cons:0,labour:parseFloat(c.labour.toFixed(2)),cost:parseFloat(c.labour.toFixed(2)),gp:parseFloat(c.profit.toFixed(2)),margin};
+  jobs.unshift(job);sv('dbvj_jobs3',jobs);setSync('busy','Saving…');const saved=await cloudSaveJob(job);if(saved)job._id=saved.id;sv('dbvj_jobs3',jobs);setSync(saved?'ok':'off',saved?'Saved':'Saved locally');document.getElementById('d-msg').textContent='Detailing job logged in shared job history.';
+  ['d-customer','d-phone','d-vehicle','d-rego','d-notes'].forEach(id=>document.getElementById(id).value='');document.getElementById('d-deposit').value='0';document.getElementById('d-override').value='0';renderHistory();renderTimesheets();calcDetailJob();
+}
+function currentDetailCardData(){const c=getDetailCalc();return{customer:document.getElementById('d-customer').value||'—',phone:document.getElementById('d-phone').value||'',vehicle:document.getElementById('d-vehicle').value||'—',rego:document.getElementById('d-rego').value||'',date:document.getElementById('d-date').value||today(),notes:document.getElementById('d-notes').value||'',size:DETAIL_SIZE_LABELS[c.size],services:[c.main].concat(c.addons).filter(Boolean).map(s=>s.name),staff:c.staff?c.staff.name:'Unassigned',total:c.total,deposit:c.deposit,balance:c.balance,status:document.getElementById('d-status').value};}
+function buildDetailJobCardHTML(d){return'<div class="jc"><div class="jc-header"><div class="jc-biz"><h1>'+h(biz.name)+'</h1><p>'+h(biz.phone)+(biz.email?' | '+h(biz.email):'')+'</p><p>'+h(biz.web)+'</p></div><div class="jc-title"><h2>Detailing Job Card</h2><p>'+h(fmtDate(d.date))+'</p><p>'+h(d.status)+'</p></div></div><div class="jc-section"><div class="jc-section-title">Customer & vehicle</div><div class="jc-grid"><div><b>Customer</b><br>'+h(d.customer)+'</div><div><b>Phone</b><br>'+h(d.phone||'—')+'</div><div><b>Vehicle</b><br>'+h(d.vehicle)+'</div><div><b>Rego</b><br>'+h(d.rego||'—')+'</div><div><b>Vehicle class</b><br>'+h(d.size)+'</div><div><b>Assigned staff</b><br>'+h(d.staff)+'</div></div></div><div class="jc-section"><div class="jc-section-title">Services</div>'+d.services.map(s=>'<div class="jc-check-item"><div class="jc-check-box"></div><span>'+h(s)+'</span></div>').join('')+'<div style="margin-top:10px"><b>Total '+fmtD(d.total)+'</b> &nbsp; Deposit '+fmtD(d.deposit)+' &nbsp; Balance '+fmtD(d.balance)+'</div></div><div class="jc-section"><div class="jc-section-title">Vehicle condition / notes</div><div class="jc-notes-box" style="min-height:55px;color:#333">'+h(d.notes||'')+'</div></div><div class="jc-section"><div class="jc-section-title">Customer satisfaction</div><p>Overall satisfaction: ☆ &nbsp; ☆ &nbsp; ☆ &nbsp; ☆ &nbsp; ☆</p><div class="jc-notes-box" style="min-height:55px">Comments</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:35px"><div class="jc-sig">Customer signature & date</div><div class="jc-sig">Detailer sign-off & date</div></div></div><div class="jc-footer"><span>'+h(biz.name)+'</span><span>Thank you for choosing Detailing By VJ</span></div></div>';}
+function showDetailCard(d){const html=buildDetailJobCardHTML(d);window._jobHtml=html;window._wHtml='';document.getElementById('jc-modal-body').innerHTML=html;document.querySelectorAll('#jc-modal .modal-footer button').forEach(b=>{const a=b.getAttribute('onclick')||'';if(a.indexOf("'wc'")>=0||a.indexOf("'both'")>=0)b.style.display='none';});document.getElementById('jc-modal').classList.add('open');}
+function previewDetailJobCard(){showDetailCard(currentDetailCardData());}
+function previewSavedDetailJob(i){const j=jobs[i],m=unpackDetailMeta(j.notes)||{},names=String(j.pkg||'').replace(/^Detailing:\s*/,'').split(',').map(x=>x.trim()).filter(Boolean);showDetailCard({customer:j.customer,phone:j.phone||'',vehicle:j.vehicle,rego:j.rego||'',date:j.date,notes:m.rawNotes||visibleDetailNotes(j.notes),size:j.size,services:names,staff:j.coatings||'Unassigned',total:parseFloat(j.price)||0,deposit:parseFloat(j.deposit)||0,balance:parseFloat(j.balance)||0,status:m.status||'Booked'});}
+const _unifiedOpenEditJob=openEditJob;
+window.openEditJob=function(i){if(String(jobs[i]&&jobs[i].pkg).indexOf('Detailing:')===0)previewSavedDetailJob(i);else _unifiedOpenEditJob(i);};
+async function cloudSaveConfig(key,value){
+  if(!cloudMode)return;const body={date:today(),customer:'__DBVJ_CONFIG__',phone:'',vehicle:'Tracker configuration',rego:'',notes:JSON.stringify(value),package:'CONFIG:'+key,size:'',coatings:'',price:0,cons_cost:0,labour_cost:0,total_cost:0,gross_profit:0,margin:0,deposit:0,balance:0};
+  try{if(cloudConfigIds[key])await sbPatch('jobs',{notes:body.notes,date:body.date},'id',cloudConfigIds[key]);else{const r=await sbPost('jobs',body),row=Array.isArray(r)?r[0]:r;if(row)cloudConfigIds[key]=row.id;}setSync('ok','Saved');}catch(e){console.error('cloudSaveConfig:',e.message);setSync('err','Config sync error');}
+}
+
+function clearData(){
+  if(!confirm('Delete ALL jobs, restock history and inventory? Cannot be undone.'))return;
+  products=JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));
+  jobs=[];restocks=[];
+  sv('dbvj_products3',products);sv('dbvj_jobs3',jobs);sv('dbvj_restocks3',restocks);
+  renderInv();renderHistory();renderRestockTab();renderSettings();calcJob();
+}
+
+// ══════════════════════════════════════════════════════════
+// SUPABASE CLOUD SYNC — plain fetch, no library
+// ══════════════════════════════════════════════════════════
+const SUPA_URL = 'https://fnxpejzmwwqgkjzskyjo.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZueHBlanptd3dxZ2tqenNreWpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5Mjc5MjAsImV4cCI6MjA5MzUwMzkyMH0.GpZmReVAjdU-kCkzobOrE4GVabDKQWyaZaDa0K-M1aY';
+let cloudMode = false;
+
+const SB_HDR = {
+  'Content-Type':  'application/json',
+  'apikey':        SUPA_KEY,
+  'Authorization': 'Bearer ' + SUPA_KEY,
+  'Prefer':        'return=representation'
+};
+
+async function sbGet(table, qs=''){
+  const r = await fetch(SUPA_URL+'/rest/v1/'+table+(qs?'?'+qs:''), {headers: SB_HDR});
+  if(!r.ok) throw new Error('GET '+table+': '+await r.text());
+  return r.json();
+}
+async function sbPost(table, body){
+  const r = await fetch(SUPA_URL+'/rest/v1/'+table, {method:'POST', headers: SB_HDR, body: JSON.stringify(body)});
+  if(!r.ok) throw new Error('POST '+table+': '+await r.text());
+  return r.json();
+}
+async function sbPatch(table, body, col, val){
+  const r = await fetch(SUPA_URL+'/rest/v1/'+table+'?'+col+'=eq.'+encodeURIComponent(val), {method:'PATCH', headers: SB_HDR, body: JSON.stringify(body)});
+  if(!r.ok) throw new Error('PATCH '+table+': '+await r.text());
+  return r.json();
+}
+async function sbDelete(table, col, val){
+  const r = await fetch(SUPA_URL+'/rest/v1/'+table+'?'+col+'=eq.'+encodeURIComponent(val), {method:'DELETE', headers: SB_HDR});
+  if(!r.ok) throw new Error('DELETE '+table+': '+await r.text());
+}
+
+function setSync(state, label){
+  const cols = {ok:'#4ade80', busy:'#facc15', err:'#f87171', off:'#888'};
+  const d = document.getElementById('sync-dot');
+  const l = document.getElementById('sync-label');
+  if(d) d.style.background = cols[state]||'#888';
+  if(l) l.textContent = label;
+}
+
+async function initCloud(){
+  setSync('busy','Connecting…');
+  try {
+    await sbGet('jobs','select=id&limit=1');
+    cloudMode = true;
+    setSync('ok','Cloud connected');
+    await cloudLoad();
+  } catch(e){
+    cloudMode = false;
+    setSync('off','Local only');
+    console.warn('Cloud unavailable:', e.message);
+  }
+}
+
+async function cloudLoad(){
+  if(!cloudMode) return;
+  try {
+    // Jobs
+    const jData = await sbGet('jobs','select=*&order=created_at.desc');
+    if(jData && jData.length >= 0){
+      const configRows=jData.filter(r=>r.customer==='__DBVJ_CONFIG__'&&String(r.package||'').indexOf('CONFIG:')===0);
+      configRows.forEach(r=>{
+        const key=String(r.package).replace('CONFIG:','');cloudConfigIds[key]=r.id;
+        try{
+          const value=JSON.parse(r.notes||'[]');
+          if(key==='detail_services'&&Array.isArray(value))detailServices=value;
+          if(key==='staff'&&Array.isArray(value))staffMembers=value;
+          if(key==='timesheets'&&Array.isArray(value))timeEntries=value;
+        }catch(e){console.warn('Invalid cloud config:',key);}
+      });
+      sv('dbvj_detail_services',detailServices);sv('dbvj_staff',staffMembers);sv('dbvj_timesheets',timeEntries);
+      jobs = jData.filter(r=>r.customer!=='__DBVJ_CONFIG__').map(r=>({
+        _id:r.id,
+        date:r.date||'', customer:r.customer||'', phone:r.phone||'', vehicle:r.vehicle||'',
+        rego:r.rego||'', notes:r.notes||'',
+        pkg:r.package||'', size:r.size||'', coatings:r.coatings||'',
+        price:parseFloat(r.price||0), cons:parseFloat(r.cons_cost||0),
+        labour:parseFloat(r.labour_cost||0), cost:parseFloat(r.total_cost||0),
+        gp:parseFloat(r.gross_profit||0), margin:parseFloat(r.margin||0),
+        deposit:parseFloat(r.deposit||0), balance:parseFloat(r.balance||0)
+      }));
+      sv('dbvj_jobs3', jobs);
+    }
+    // Products
+    const pData = await sbGet('products','select=*&order=sort_order.asc');
+    if(pData && pData.length > 0){
+      products = pData.map(r=>({
+        id:r.id, name:r.name, unit:r.unit||'',
+        unitCost:parseFloat(r.unit_cost||0),
+        usesPerBottle:parseFloat(r.uses_per_bottle||1),
+        stock:parseFloat(r.stock||0),
+        low:parseFloat(r.low_stock||1),
+        custom:r.is_custom||false
+      }));
+      sv('dbvj_products3', products);
+    }
+    // Restocks
+    const rData = await sbGet('restocks','select=*&order=created_at.desc');
+    if(rData && rData.length >= 0){
+      restocks = rData.map(r=>({
+        date:r.date||'', product:r.product_name||'',
+        qty:parseFloat(r.qty||0), stock:parseFloat(r.new_stock||0),
+        unitCost:parseFloat(r.unit_cost||0), total:parseFloat(r.total_cost||0)
+      }));
+      sv('dbvj_restocks3', restocks);
+    }
+    renderInv(); renderHistory(); renderRestockTab(); initCustomRows(); renderUnifiedModules();
+    setSync('ok','Cloud connected');
+  } catch(e){
+    setSync('err','Sync error — '+e.message);
+    console.error('cloudLoad:', e);
+  }
+}
+
+async function cloudSaveJob(job){
+  if(!cloudMode) return null;
+  try {
+    const res = await sbPost('jobs',{
+      date:job.date, customer:job.customer, phone:job.phone||'', vehicle:job.vehicle,
+      rego:job.rego||'', notes:job.notes||'',
+      package:job.pkg, size:job.size, coatings:job.coatings,
+      price:job.price, cons_cost:job.cons, labour_cost:job.labour,
+      total_cost:job.cost, gross_profit:job.gp, margin:job.margin,
+      deposit:job.deposit||0, balance:job.balance||0
+    });
+    return Array.isArray(res)?res[0]:res;
+  } catch(e){ console.error('cloudSaveJob:', e.message); return null; }
+}
+
+async function cloudUpdateJob(idx, u){
+  if(!cloudMode) return;
+  const j = jobs[idx]; if(!j||!j._id) return;
+  try {
+    await sbPatch('jobs',{
+      date:u.date, customer:u.customer, vehicle:u.vehicle,
+      rego:u.rego||'', notes:u.notes||'',
+      package:u.pkg, size:u.size, coatings:u.coatings,
+      price:u.price, cons_cost:u.cons, labour_cost:u.labour,
+      total_cost:u.cost, gross_profit:u.gp, margin:u.margin,
+      deposit:u.deposit||0, balance:u.balance||0
+    },'id', j._id);
+  } catch(e){ console.error('cloudUpdateJob:', e.message); }
+}
+
+async function cloudDeleteJob(idx){
+  if(!cloudMode) return;
+  const j = jobs[idx]; if(!j||!j._id) return;
+  try { await sbDelete('jobs','id', j._id); }
+  catch(e){ console.error('cloudDeleteJob:', e.message); }
+}
+
+async function cloudUpdateStock(prodId, newStock){
+  if(!cloudMode) return;
+  try { await sbPatch('products',{stock:newStock},'id',prodId); }
+  catch(e){ console.error('cloudUpdateStock:', e.message); }
+}
+
+async function cloudSaveRestock(r){
+  if(!cloudMode) return;
+  try {
+    await sbPost('restocks',{
+      date:r.date, product_id:r.prodId||'', product_name:r.product,
+      qty:r.qty, new_stock:r.stock, unit_cost:r.unitCost, total_cost:r.total
+    });
+  } catch(e){ console.error('cloudSaveRestock:', e.message); }
+}
+
+// ── Hook into existing logJob: wrap stock deductions + save
+const _origLogJob = logJob;
+window.logJob = async function(){
+  // Call original sync version
+  _origLogJob();
+  // Then cloud save the job that was just pushed to jobs[0]
+  setSync('busy','Saving…');
+  const saved = await cloudSaveJob(jobs[0]);
+  if(saved) jobs[0]._id = saved.id;
+  // Cloud sync stock for all changed products
+  for(const p of products){
+    if(p._sc){ await cloudUpdateStock(p.id, p.stock); delete p._sc; }
+  }
+  sv('dbvj_jobs3', jobs);
+  setSync('ok','Saved');
+  renderHistory();
+};
+
+// ── Hook into doRestock
+const _origDoRestock = doRestock;
+window.doRestock = async function(){
+  _origDoRestock();
+  const id  = document.getElementById('restock-product').value;
+  const qty = parseFloat(document.getElementById('restock-qty').value)||1;
+  const prod = products.find(x=>x.id===id);
+  if(prod && cloudMode){
+    await cloudUpdateStock(id, prod.stock);
+    await cloudSaveRestock({date:today(),prodId:id,product:prod.name,qty,stock:prod.stock,unitCost:prod.unitCost,total:qty*prod.unitCost});
+  }
+};
+
+// ── Mark stock changes on deduct (patch into existing logJob flow)
+// We flag _sc on products when stock is deducted
+const _origCalcJob = calcJob;
+
+// ══════════════════════════════════════════════════════════
+// EDIT JOB
+// ══════════════════════════════════════════════════════════
+function openEditJob(i){
+  const j = jobs[i];
+  if(!j) return;
+  document.getElementById('edit-job-idx').value    = i;
+  document.getElementById('edit-customer').value   = j.customer||'';
+  document.getElementById('edit-phone').value       = j.phone||'';
+  document.getElementById('edit-vehicle').value    = j.vehicle||'';
+  document.getElementById('edit-rego').value       = j.rego||'';
+  document.getElementById('edit-vin').value        = j.vin||'';
+  document.getElementById('edit-date').value       = j.date||'';
+  document.getElementById('edit-pkg').value        = j.pkg||'5-yr full';
+  document.getElementById('edit-size').value       = j.size||'Sm/Med';
+  document.getElementById('edit-price').value      = j.price||'';
+  document.getElementById('edit-coatings').value   = j.coatings||'';
+  document.getElementById('edit-batch').value      = j.batch||'';
+  document.getElementById('edit-cons').value       = j.cons||'';
+  document.getElementById('edit-labour').value     = j.labour||'';
+  document.getElementById('edit-notes').value      = j.notes||'';
+  document.getElementById('edit-deposit').value    = j.deposit||0;
+  document.getElementById('edit-msg').textContent  = '';
+  document.getElementById('edit-err').textContent  = '';
+  recalcEdit();
+  document.getElementById('edit-overlay').classList.add('open');
+}
+
+function recalcEdit(){
+  const price   = parseFloat(document.getElementById('edit-price').value)||0;
+  const cons    = parseFloat(document.getElementById('edit-cons').value)||0;
+  const labour  = parseFloat(document.getElementById('edit-labour').value)||0;
+  const deposit = parseFloat(document.getElementById('edit-deposit').value)||0;
+  const total   = cons + labour;
+  const gp      = price - total;
+  const margin  = price > 0 ? Math.round((gp/price)*100) : 0;
+  const balance = Math.max(0, price - deposit);
+  document.getElementById('edit-total').textContent  = '$'+total.toFixed(2);
+  const gpEl = document.getElementById('edit-gp');
+  gpEl.textContent = '$'+gp.toFixed(2);
+  gpEl.style.color = gp>1000?'#3B6D11':gp>400?'#854F0B':'#A32D2D';
+  const mEl = document.getElementById('edit-margin');
+  mEl.textContent = margin+'%';
+  mEl.style.color = margin>50?'#3B6D11':margin>30?'#854F0B':'#A32D2D';
+  document.getElementById('edit-deposit-show').textContent = deposit>0?'$'+deposit.toFixed(2):'—';
+  document.getElementById('edit-balance').textContent = '$'+balance.toFixed(2);
+}
+
+async function saveEditJob(){
+  const i      = parseInt(document.getElementById('edit-job-idx').value);
+  const price  = parseFloat(document.getElementById('edit-price').value)||0;
+  const cons   = parseFloat(document.getElementById('edit-cons').value)||0;
+  const labour = parseFloat(document.getElementById('edit-labour').value)||0;
+  const total  = parseFloat((cons+labour).toFixed(2));
+  const gp     = parseFloat((price-total).toFixed(2));
+  const margin = price>0 ? Math.round((gp/price)*100) : 0;
+  const updates = {
+    date:     document.getElementById('edit-date').value,
+    customer: document.getElementById('edit-customer').value,
+    phone:    document.getElementById('edit-phone').value||'',
+    vehicle:  document.getElementById('edit-vehicle').value,
+    rego:     document.getElementById('edit-rego').value,
+    vin:      document.getElementById('edit-vin').value||'',
+    batch:    document.getElementById('edit-batch').value||'',
+    notes:    document.getElementById('edit-notes').value,
+    pkg:      document.getElementById('edit-pkg').value,
+    size:     document.getElementById('edit-size').value,
+    coatings: document.getElementById('edit-coatings').value,
+    price, cons, labour, cost:total, gp, margin,
+    deposit: parseFloat(document.getElementById('edit-deposit').value)||0,
+    balance: Math.max(0, price-(parseFloat(document.getElementById('edit-deposit').value)||0))
+  };
+  setSync('busy','Saving…');
+  await cloudUpdateJob(i, updates);
+  Object.assign(jobs[i], updates);
+  sv('dbvj_jobs3', jobs);
+  setSync('ok','Saved');
+  document.getElementById('edit-msg').textContent = 'Job updated.';
+  setTimeout(()=>closeEditOverlayDirect(), 700);
+  renderHistory();
+}
+
+async function deleteJobFromEdit(){
+  const i = parseInt(document.getElementById('edit-job-idx').value);
+  if(!confirm('Delete this job? Cannot be undone.')) return;
+  closeEditOverlayDirect();
+  setSync('busy','Deleting…');
+  await cloudDeleteJob(i);
+  jobs.splice(i,1);
+  sv('dbvj_jobs3',jobs);
+  setSync('ok','Done');
+  renderHistory();
+}
+
+function previewJobCardFromEdit(openTab){
+  const i   = parseInt(document.getElementById('edit-job-idx').value);
+  const j   = jobs[i];
+  if(!j) return;
+
+  // Build data object from the current edit form values (unsaved changes reflected too)
+  const PKG_LABELS = {
+    '3-yr entry': {label:'3-Year Entry Protection', paintId:'prolong_lt', hrs:{small:6,large:7}, price:{small:990,large:1290}},
+    '5-yr full':  {label:'5-Year Full Protection',  paintId:'prolong',    hrs:{small:7,large:8}, price:{small:1490,large:1690}},
+    '7-yr graphene':{label:'7-Year Graphene Protection',paintId:'graphene',hrs:{small:7,large:8},price:{small:1690,large:1890}},
+  };
+  const pkgKey  = document.getElementById('edit-pkg').value;
+  const pkgData = PKG_LABELS[pkgKey] || PKG_LABELS['5-yr full'];
+  const coatStr = document.getElementById('edit-coatings').value||j.coatings||'';
+  const flags   = coatStr.split(',').map(s=>s.trim()).filter(Boolean);
+  const sizeVal = document.getElementById('edit-size').value||j.size||'Sm/Med';
+
+  const data = {
+    cardNo:   j.cardNo || jobCardNo(),
+    biz,
+    date:     document.getElementById('edit-date').value || j.date,
+    customer: document.getElementById('edit-customer').value || j.customer,
+    phone:    document.getElementById('edit-phone').value || j.phone||'',
+    vehicle:  document.getElementById('edit-vehicle').value || j.vehicle,
+    rego:     document.getElementById('edit-rego').value || j.rego||'',
+    vin:      document.getElementById('edit-vin').value || j.vin||'',
+    batch:    document.getElementById('edit-batch').value || j.batch||'',
+    notes:    document.getElementById('edit-notes').value || j.notes||'',
+    size:     sizeVal==='Sm/Med'?'small':'large',
+    pkg:      pkgKey,
+    pkgData,
+    flags,
+    consTot:  parseFloat(document.getElementById('edit-cons').value)||j.cons||0,
+    labour:   { total: parseFloat(document.getElementById('edit-labour').value)||j.labour||0 },
+    totalCost:parseFloat(document.getElementById('edit-cons').value||0)+parseFloat(document.getElementById('edit-labour').value||0),
+    price:    parseFloat(document.getElementById('edit-price').value)||j.price||0,
+    deposit:  parseFloat(document.getElementById('edit-deposit').value)||j.deposit||0,
+    balance:  Math.max(0,(parseFloat(document.getElementById('edit-price').value)||j.price||0)-(parseFloat(document.getElementById('edit-deposit').value)||j.deposit||0)),
+    gp:       parseFloat(document.getElementById('edit-gp').textContent.replace('$','').replace(',',''))||j.gp||0,
+    margin:   parseInt(document.getElementById('edit-margin').textContent)||j.margin||0,
+  };
+
+  const jobHtml = buildJobCardHTML(data);
+  const wHtml   = buildWarrantyCertHTML(data);
+
+  const modalHtml = `
+    <div style="display:flex;gap:8px;margin-bottom:1rem">
+      <button class="btn ${openTab==='jc'?'btn-primary':''}" id="tab-jc-btn" onclick="switchPreviewTab('jc')" style="font-size:12px;padding:6px 14px">Job card</button>
+      <button class="btn ${openTab==='wc'?'btn-primary':''}" id="tab-wc-btn" onclick="switchPreviewTab('wc')" style="font-size:12px;padding:6px 14px">Warranty certificate</button>
+    </div>
+    <div id="preview-jc" ${openTab==='wc'?'style="display:none"':''}>${jobHtml}</div>
+    <div id="preview-wc" ${openTab==='jc'?'style="display:none"':''}>${wHtml}</div>
+  `;
+
+  document.getElementById('jc-modal-body').innerHTML = modalHtml;
+  document.getElementById('printable-card').innerHTML = jobHtml + wHtml;
+  window._jobHtml = jobHtml;
+  window._wHtml   = wHtml;
+
+  // Close edit modal, open print modal
+  closeEditOverlayDirect();
+  document.getElementById('jc-modal').classList.add('open');
+}
+
+function closeEditOverlay(e){ if(e.target===document.getElementById('edit-overlay')) closeEditOverlayDirect(); }
+function closeEditOverlayDirect(){ document.getElementById('edit-overlay').classList.remove('open'); }
+
+</script>
+</body>
+</html>
