@@ -660,6 +660,7 @@
           </select>
         </div>
         <div class="form-field"><label>Coatings included</label><input type="text" id="edit-coatings" placeholder="e.g. Paint, Glass, Wheels"></div>
+        <div class="form-field"><label>Assigned staff</label><select id="edit-assigned-staff"></select></div>
         <div class="form-field"><label>Batch number</label><input type="text" id="edit-batch" placeholder="e.g. W2EWYPYM"></div>
       </div>
 
@@ -898,7 +899,15 @@ function unpackCoatingMeta(notes){const m=String(notes||'').match(/\[\[COATING_M
 function stripJobTypeMeta(notes){return String(notes||'').replace(/\n?\[\[JOB_TYPE:(ceramic|detailing)\]\]/g,'').trim();}
 function jobTypeFromNotes(notes){const m=String(notes||'').match(/\[\[JOB_TYPE:(ceramic|detailing)\]\]/);return m?m[1]:'';}
 function notesWithJobTypeMeta(notes,type){const clean=stripJobTypeMeta(notes);return clean+(type?'\n[[JOB_TYPE:'+type+']]':'');}
-function visibleJobNotes(notes){return stripJobTypeMeta(visibleDetailNotes(stripCoatingMeta(notes||'')));}
+function visibleJobNotes(notes){return stripAssignedMeta(stripJobTypeMeta(visibleDetailNotes(stripCoatingMeta(notes||''))));}
+function stripAssignedMeta(notes){return String(notes||'').replace(/\n?\[\[ASSIGNED:[^\]]+\]\]/g,'').trim();}
+function notesWithAssignedMeta(notes,email){
+  const clean=stripAssignedMeta(notes);
+  const assigned=String(email||'').trim().toLowerCase();
+  return clean+(assigned?'\n[[ASSIGNED:'+btoa(assigned)+']]':'');
+}
+function staffEmail(staff){return staff&&staff.loginEmail?String(staff.loginEmail).trim().toLowerCase():'';}
+function staffByEmail(email){const e=String(email||'').trim().toLowerCase();return staffMembers.find(s=>staffEmail(s)===e)||null;}
 function notesWithCoatingMeta(notes,job){
   const clean=stripCoatingMeta(notes);
   const meta={vin:job&&job.vin?String(job.vin):'',batch:job&&job.batch?String(job.batch):''};
@@ -1757,7 +1766,7 @@ function renderTimesheets(){
   const staffSel=document.getElementById('time-staff'),jobSel=document.getElementById('time-job');
   const loginEmail=((authSession&&authSession.user&&authSession.user.email)||'').toLowerCase();
   const allowedStaff=userRole==='owner'?staffMembers:staffMembers.filter(s=>String(s.loginEmail||'').toLowerCase()===loginEmail);
-  const allowedJobs=userRole==='owner'?jobs:jobs.filter(j=>String(j.assignedEmail||'').toLowerCase()===loginEmail);
+  const allowedJobs=userRole==='owner'?jobs:jobs.filter(j=>assignedEmailFromJob(j)===loginEmail);
   const visibleTimes=userRole==='owner'?timeEntries:timeEntries.filter(t=>allowedStaff.some(s=>s.id===t.staffId));
   staffSel.innerHTML=allowedStaff.map(s=>'<option value="'+h(s.id)+'">'+h(s.name)+'</option>').join('');
   jobSel.innerHTML=allowedJobs.map(j=>'<option value="'+h(jobLinkKey(j))+'">'+h(fmtDate(j.date)+' · '+j.customer+' · '+(j.rego||j.vehicle))+'</option>').join('');
@@ -2192,8 +2201,9 @@ window.logJob = async function(){
   // Call original sync version
   _origLogJob();
   const assigned=staffMembers.find(s=>s.id===(document.getElementById('coat-staff')?document.getElementById('coat-staff').value:''));
-  jobs[0].assignedEmail=assigned&&assigned.loginEmail?String(assigned.loginEmail).toLowerCase():'';
-  if(jobs[0].assignedEmail)jobs[0].notes=String(jobs[0].notes||'')+'\n[[ASSIGNED:'+btoa(jobs[0].assignedEmail)+']]\n[[JOB_STATUS:Booked]]';
+  jobs[0].assignedEmail=staffEmail(assigned);
+  jobs[0].notes=notesWithAssignedMeta(notesWithJobTypeMeta(visibleJobNotes(jobs[0].notes),'ceramic'),jobs[0].assignedEmail);
+  if(!jobStatus(jobs[0])||jobStatus(jobs[0])==='Booked')jobs[0].notes=String(jobs[0].notes||'')+'\n[[JOB_STATUS:Booked]]';
   // Then cloud save the job that was just pushed to jobs[0]
   setSync('busy','Saving…');
   const saved = await cloudSaveJob(jobs[0]);
@@ -2243,6 +2253,12 @@ function openEditJob(i){
   document.getElementById('edit-size').value       = coatingSizeFromSaved(j.size);
   document.getElementById('edit-price').value      = j.price||'';
   document.getElementById('edit-coatings').value   = j.coatings||'';
+  const assignedSel=document.getElementById('edit-assigned-staff');
+  if(assignedSel){
+    const assignedEmail=assignedEmailFromJob(j),matched=staffByEmail(assignedEmail);
+    assignedSel.innerHTML='<option value="">Owner / unassigned</option>'+staffMembers.filter(s=>s.loginEmail).map(s=>'<option value="'+h(s.id)+'">'+h(s.name)+' - '+h(s.loginEmail)+'</option>').join('');
+    assignedSel.value=matched?matched.id:'';
+  }
   document.getElementById('edit-batch').value      = j.batch||'';
   document.getElementById('edit-cons').value       = j.cons||'';
   document.getElementById('edit-labour').value     = j.labour||'';
@@ -2300,12 +2316,16 @@ function recalcEdit(){
 
 async function saveEditJob(){
   const i      = parseInt(document.getElementById('edit-job-idx').value);
+  const existing = jobs[i]||{};
   const price  = parseFloat(document.getElementById('edit-price').value)||0;
   const cons   = parseFloat(document.getElementById('edit-cons').value)||0;
   const labour = parseFloat(document.getElementById('edit-labour').value)||0;
   const total  = parseFloat((cons+labour).toFixed(2));
   const gp     = parseFloat((price-total).toFixed(2));
   const margin = price>0 ? Math.round((gp/price)*100) : 0;
+  const assignedSel = document.getElementById('edit-assigned-staff');
+  const assignedStaff = assignedSel ? staffMembers.find(s=>s.id===assignedSel.value) : null;
+  const assignedEmail = assignedSel ? staffEmail(assignedStaff) : assignedEmailFromJob(existing);
   const updates = {
     date:     document.getElementById('edit-date').value,
     customer: document.getElementById('edit-customer').value,
@@ -2314,11 +2334,11 @@ async function saveEditJob(){
     rego:     document.getElementById('edit-rego').value,
     vin:      document.getElementById('edit-vin').value||'',
     batch:    document.getElementById('edit-batch').value||'',
-    notes:    notesWithJobTypeMeta(visibleJobNotes(document.getElementById('edit-notes').value),'ceramic'),
+    notes:    notesWithAssignedMeta(notesWithJobTypeMeta(visibleJobNotes(document.getElementById('edit-notes').value),'ceramic'),assignedEmail),
     pkg:      packageLabelById(document.getElementById('edit-pkg').value),
     size:     document.getElementById('edit-size').value,
     coatings: document.getElementById('edit-coatings').value,
-    assignedEmail:'',
+    assignedEmail,
     price, cons, labour, cost:total, gp, margin,
     deposit: parseFloat(document.getElementById('edit-deposit').value)||0,
     balance: Math.max(0, price-(parseFloat(document.getElementById('edit-deposit').value)||0))
@@ -2331,6 +2351,7 @@ async function saveEditJob(){
   document.getElementById('edit-msg').textContent = 'Job updated.';
   setTimeout(()=>closeEditOverlayDirect(), 700);
   renderHistory();
+  renderTimesheets();
 }
 
 async function deleteJobFromEdit(){
