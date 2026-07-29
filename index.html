@@ -1283,7 +1283,7 @@ function buildWarrantyWalletSVG(data){
   const customer=walletEsc(walletShort(data.customer,31));
   const vehicle=walletEsc(walletShort(data.vehicle,31));
   const rego=walletEsc(walletShort(data.rego||'—',18));
-  const pkg=walletEsc(walletShort((data.pkgData&&data.pkgData.label)||data.pkg||'Ceramic coating',48));
+  const pkg=walletEsc(walletShort(data.pkgLabel||(data.pkgData&&data.pkgData.label)||data.pkg||'Ceramic coating',48));
   const warrantyId=walletEsc(walletShort(data.batch||data.cardNo||'—',24));
   const applied=walletEsc(walletCardDate(data.date));
   const phone=walletEsc((data.biz&&data.biz.phone)||'0431 374 408');
@@ -1375,6 +1375,7 @@ function previewJobCard(){
     size:document.getElementById('car-size').value,
     pkg:document.getElementById('pkg-select').value,
     pkgData:c.pkgData,
+    pkgLabel:(c.pkgData&&c.pkgData.label)||'',
     flags:c.flags,
     consTot:c.consTot,
     labour:c.labour,
@@ -2484,6 +2485,8 @@ function previewJobCardFromEdit(openTab){
   // Build data object from the current edit form values (unsaved changes reflected too)
   const pkgKey  = document.getElementById('edit-pkg').value;
   const pkgData = PKG_MAP[pkgKey] || coatingPackages[0] || DEFAULT_PACKAGES[0];
+  const savedPkgId = packageIdFromSaved(j.pkg);
+  const pkgLabel = pkgKey===savedPkgId && j.pkg ? j.pkg : ((pkgData&&pkgData.label)||j.pkg||'Ceramic coating');
   const coatStr = document.getElementById('edit-coatings').value||j.coatings||'';
   const flags   = coatStr.split(',').map(s=>s.trim()).filter(Boolean);
   const sizeVal = document.getElementById('edit-size').value||j.size||'Sm/Med';
@@ -2502,6 +2505,7 @@ function previewJobCardFromEdit(openTab){
     size:     sizeVal==='Sm/Med'?'small':'large',
     pkg:      pkgKey,
     pkgData,
+    pkgLabel,
     flags,
     consTot:  parseFloat(document.getElementById('edit-cons').value)||j.cons||0,
     labour:   { total: parseFloat(document.getElementById('edit-labour').value)||j.labour||0 },
