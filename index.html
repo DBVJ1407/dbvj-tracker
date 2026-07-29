@@ -1293,6 +1293,50 @@ async function walletLogoDataUrl(){
   });
   return dbvjWalletLogoData;
 }
+function walletCrc32(bytes){
+  let crc=0xffffffff;
+  for(const byte of bytes){
+    crc^=byte;
+    for(let bit=0;bit<8;bit++)crc=(crc>>>1)^((crc&1)?0xedb88320:0);
+  }
+  return (crc^0xffffffff)>>>0;
+}
+function walletPngChunk(type,data){
+  const typeBytes=new TextEncoder().encode(type);
+  const chunk=new Uint8Array(12+data.length);
+  const view=new DataView(chunk.buffer);
+  view.setUint32(0,data.length);
+  chunk.set(typeBytes,4);
+  chunk.set(data,8);
+  view.setUint32(8+data.length,walletCrc32(chunk.slice(4,8+data.length)));
+  return chunk;
+}
+async function walletPngWithDpi(blob,dpi){
+  const source=new Uint8Array(await blob.arrayBuffer());
+  const pixelsPerMetre=Math.round(dpi/0.0254);
+  const physData=new Uint8Array(9);
+  const physView=new DataView(physData.buffer);
+  physView.setUint32(0,pixelsPerMetre);
+  physView.setUint32(4,pixelsPerMetre);
+  physData[8]=1;
+  const physChunk=walletPngChunk('pHYs',physData);
+  const parts=[source.slice(0,8)];
+  let offset=8,inserted=false;
+  while(offset+12<=source.length){
+    const length=new DataView(source.buffer,source.byteOffset+offset,4).getUint32(0);
+    const end=offset+12+length;
+    if(end>source.length)throw new Error('Invalid PNG data.');
+    const type=String.fromCharCode(...source.slice(offset+4,offset+8));
+    if(type==='IHDR'){
+      parts.push(source.slice(offset,end));
+      parts.push(physChunk);
+      inserted=true;
+    }else if(type!=='pHYs')parts.push(source.slice(offset,end));
+    offset=end;
+  }
+  if(!inserted)throw new Error('PNG header not found.');
+  return new Blob(parts,{type:'image/png'});
+}
 function buildWarrantyWalletSVG(data){
   const years=walletWarrantyYears(data);
   const customer=walletEsc(walletShort(data.customer,31));
@@ -1303,7 +1347,7 @@ function buildWarrantyWalletSVG(data){
   const applied=walletEsc(walletCardDate(data.date));
   const phone=walletEsc((data.biz&&data.biz.phone)||'0431 374 408');
   const email=walletEsc((data.biz&&data.biz.email)||'info@detailingbyvj.com.au');
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="756" viewBox="0 0 1200 756" role="img" aria-label="DBVJ ceramic coating warranty card">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="85.6mm" height="53.98mm" viewBox="0 0 1200 756.73" role="img" aria-label="DBVJ ceramic coating warranty card">
     <defs>
       <linearGradient id="walletBg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#030504"/><stop offset=".58" stop-color="#121414"/><stop offset="1" stop-color="#050707"/></linearGradient>
       <linearGradient id="walletGold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe38f"/><stop offset=".45" stop-color="#d9a92f"/><stop offset="1" stop-color="#8b6312"/></linearGradient>
@@ -1342,8 +1386,8 @@ function buildWarrantyWalletSVG(data){
   </svg>`;
 }
 function buildWarrantyWalletHTML(data){
-  const svg=buildWarrantyWalletSVG(data).replace('<svg ','<svg style="width:100%;height:auto;display:block" ');
-  return `<div style="max-width:820px;margin:0 auto;background:#ececea;padding:24px;border-radius:14px">${svg}</div>`;
+  const svg=buildWarrantyWalletSVG(data).replace('<svg ','<svg style="width:85.6mm;height:53.98mm;max-width:100%;display:block;margin:0 auto" ');
+  return `<div style="max-width:calc(85.6mm + 48px);margin:0 auto;background:#ececea;padding:24px;border-radius:14px">${svg}</div>`;
 }
 async function downloadWarrantyCard(){
   let svg=window._walletSvg;
@@ -1358,17 +1402,21 @@ async function downloadWarrantyCard(){
   const img=new Image();
   img.onload=()=>{
     const canvas=document.createElement('canvas');
-    canvas.width=2400;canvas.height=1512;
+    canvas.width=2022;canvas.height=1275;
     const ctx=canvas.getContext('2d');
     ctx.drawImage(img,0,0,canvas.width,canvas.height);
     URL.revokeObjectURL(url);
-    canvas.toBlob(png=>{
-      const a=document.createElement('a');
-      const safe=String(data.customer||'customer').replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'');
-      a.href=URL.createObjectURL(png);
-      a.download=(safe||'customer')+'-DBVJ-Warranty-Card.png';
-      document.body.appendChild(a);a.click();a.remove();
-      setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+    canvas.toBlob(async png=>{
+      if(!png){alert('Could not generate the warranty card image.');return;}
+      try{
+        const printPng=await walletPngWithDpi(png,600);
+        const a=document.createElement('a');
+        const safe=String(data.customer||'customer').replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'');
+        a.href=URL.createObjectURL(printPng);
+        a.download=(safe||'customer')+'-DBVJ-Warranty-Card-85.6x53.98mm.png';
+        document.body.appendChild(a);a.click();a.remove();
+        setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+      }catch(e){alert('Could not apply the credit-card print size.');}
     },'image/png',1);
   };
   img.onerror=()=>{URL.revokeObjectURL(url);alert('Could not generate the warranty card image.');};
