@@ -1278,6 +1278,21 @@ function walletShort(value,max){
 function walletEsc(value){
   return String(value==null?'':value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+const DBVJ_WALLET_LOGO_URL='DBVJ-Updated-Logo.png';
+let dbvjWalletLogoData='';
+async function walletLogoDataUrl(){
+  if(dbvjWalletLogoData)return dbvjWalletLogoData;
+  const response=await fetch(DBVJ_WALLET_LOGO_URL);
+  if(!response.ok)throw new Error('Logo could not be loaded.');
+  const logoBlob=await response.blob();
+  dbvjWalletLogoData=await new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(String(reader.result||''));
+    reader.onerror=()=>reject(reader.error||new Error('Logo could not be read.'));
+    reader.readAsDataURL(logoBlob);
+  });
+  return dbvjWalletLogoData;
+}
 function buildWarrantyWalletSVG(data){
   const years=walletWarrantyYears(data);
   const customer=walletEsc(walletShort(data.customer,31));
@@ -1297,10 +1312,7 @@ function buildWarrantyWalletSVG(data){
     <rect width="1200" height="756" rx="30" fill="url(#walletBg)"/>
     <rect width="1200" height="756" rx="30" fill="url(#walletTexture)"/>
     <rect x="18" y="18" width="1164" height="720" rx="25" fill="none" stroke="#d9a92f" stroke-width="4"/>
-    <path d="M72 135 Q225 18 378 135 Q225 68 72 135" fill="none" stroke="url(#walletGold)" stroke-width="8"/>
-    <text x="72" y="205" fill="url(#walletGold)" font-family="Arial,Helvetica,sans-serif" font-size="86" font-weight="800" letter-spacing="3">DBVJ</text>
-    <line x1="72" y1="225" x2="368" y2="225" stroke="#d9a92f" stroke-width="3"/>
-    <text x="220" y="250" text-anchor="middle" fill="#f4f4ef" font-family="Arial,Helvetica,sans-serif" font-size="19" font-weight="700" letter-spacing="7">DETAILING BY VJ</text>
+    <image x="58" y="52" width="440" height="177" href="${DBVJ_WALLET_LOGO_URL}" preserveAspectRatio="xMidYMid meet"/>
     <text x="72" y="313" fill="#e7b943" font-family="Arial,Helvetica,sans-serif" font-size="31" font-weight="800" letter-spacing="2">CERAMIC COATING</text>
     <text x="72" y="361" fill="#f7f7f3" font-family="Arial,Helvetica,sans-serif" font-size="49" font-weight="800" letter-spacing="1">WARRANTY CARD</text>
     <circle cx="930" cy="198" r="132" fill="#0b0d0d" stroke="#d9a92f" stroke-width="7"/>
@@ -1333,10 +1345,14 @@ function buildWarrantyWalletHTML(data){
   const svg=buildWarrantyWalletSVG(data).replace('<svg ','<svg style="width:100%;height:auto;display:block" ');
   return `<div style="max-width:820px;margin:0 auto;background:#ececea;padding:24px;border-radius:14px">${svg}</div>`;
 }
-function downloadWarrantyCard(){
-  const svg=window._walletSvg;
+async function downloadWarrantyCard(){
+  let svg=window._walletSvg;
   const data=window._lastCardData;
   if(!svg||!data){alert('Preview a ceramic coating job first.');return;}
+  try{
+    const logoData=await walletLogoDataUrl();
+    svg=svg.split(DBVJ_WALLET_LOGO_URL).join(logoData);
+  }catch(e){alert('Could not load the DBVJ logo for the warranty card.');return;}
   const blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
   const url=URL.createObjectURL(blob);
   const img=new Image();
