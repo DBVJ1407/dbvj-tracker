@@ -1275,16 +1275,19 @@ function walletShort(value,max){
   const s=String(value||'—');
   return s.length>max?s.slice(0,Math.max(1,max-1))+'…':s;
 }
+function walletEsc(value){
+  return String(value==null?'':value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 function buildWarrantyWalletSVG(data){
   const years=walletWarrantyYears(data);
-  const customer=esc(walletShort(data.customer,31));
-  const vehicle=esc(walletShort(data.vehicle,31));
-  const rego=esc(walletShort(data.rego||'—',18));
-  const pkg=esc(walletShort((data.pkgData&&data.pkgData.label)||data.pkg||'Ceramic coating',48));
-  const warrantyId=esc(walletShort(data.batch||data.cardNo||'—',24));
-  const applied=esc(walletCardDate(data.date));
-  const phone=esc((data.biz&&data.biz.phone)||'0431 374 408');
-  const email=esc((data.biz&&data.biz.email)||'info@detailingbyvj.com.au');
+  const customer=walletEsc(walletShort(data.customer,31));
+  const vehicle=walletEsc(walletShort(data.vehicle,31));
+  const rego=walletEsc(walletShort(data.rego||'—',18));
+  const pkg=walletEsc(walletShort((data.pkgData&&data.pkgData.label)||data.pkg||'Ceramic coating',48));
+  const warrantyId=walletEsc(walletShort(data.batch||data.cardNo||'—',24));
+  const applied=walletEsc(walletCardDate(data.date));
+  const phone=walletEsc((data.biz&&data.biz.phone)||'0431 374 408');
+  const email=walletEsc((data.biz&&data.biz.email)||'info@detailingbyvj.com.au');
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="756" viewBox="0 0 1200 756" role="img" aria-label="DBVJ ceramic coating warranty card">
     <defs>
       <linearGradient id="walletBg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#030504"/><stop offset=".58" stop-color="#121414"/><stop offset="1" stop-color="#050707"/></linearGradient>
@@ -1311,8 +1314,9 @@ function buildWarrantyWalletSVG(data){
     <text x="300" y="490" fill="#f4f4ef" font-family="Arial,Helvetica,sans-serif" font-size="28">${vehicle}</text>
     <text x="74" y="538" fill="#d9a92f" font-family="Arial,Helvetica,sans-serif" font-size="17" font-weight="800">REGISTRATION</text>
     <text x="300" y="540" fill="#f4f4ef" font-family="Arial,Helvetica,sans-serif" font-size="28">${rego}</text>
-    <text x="690" y="438" fill="#d9a92f" font-family="Arial,Helvetica,sans-serif" font-size="17" font-weight="800">PACKAGE</text>
-    <text x="810" y="440" fill="#f4f4ef" font-family="Arial,Helvetica,sans-serif" font-size="22">${pkg}</text>
+    <rect x="660" y="407" width="468" height="62" rx="10" fill="#0b0d0d" stroke="#d9a92f" stroke-width="2"/>
+    <text x="682" y="431" fill="#d9a92f" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="800" letter-spacing="1">COATING PACKAGE</text>
+    <text x="682" y="458" fill="#f7cf69" font-family="Arial,Helvetica,sans-serif" font-size="22" font-weight="800">${pkg}</text>
     <text x="690" y="488" fill="#d9a92f" font-family="Arial,Helvetica,sans-serif" font-size="17" font-weight="800">APPLIED</text>
     <text x="810" y="490" fill="#f4f4ef" font-family="Arial,Helvetica,sans-serif" font-size="23">${applied}</text>
     <text x="690" y="538" fill="#d9a92f" font-family="Arial,Helvetica,sans-serif" font-size="17" font-weight="800">WARRANTY ID</text>
